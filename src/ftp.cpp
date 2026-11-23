@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "evox/ftp.h"
+#include "evox/log.h"
 #include "evox/globals.h"
 #include "evox/info.h"
 #include "evox/inifile.h"
@@ -102,14 +103,15 @@ char *CFtpServer::MakePath(const char *arg, char *out, const char *cwd)
         out[0] = 0;
         return out;
     }
-    const char *src = (arg[0] == '/' || arg[0] == '\\') ? arg : cwd;
+    bool relative = arg[0] != '/' && arg[0] != '\\'; // (LIST passes cwd as arg: absolute)
+    const char *src = relative ? cwd : arg;
     char *o = out;
     *o++ = src[1];
     *o++ = ':';
     for (const char *p = src + 2; *p; p++)
         *o++ = *p == '/' ? '\\' : *p;
     *o = 0;
-    if (src == cwd) {
+    if (relative) {
         if (out[strlen(out) - 1] != '\\')
             strcat(out, "\\");
         strcat(out, arg);
@@ -371,10 +373,9 @@ static void SendText(CSocket *s, const char *text) { s->Send(text, strlen(text))
 // elsewhere "ls -l" style lines, dated by the creation time.
 void CFtpServer::List(CSocket *data, const char *cwd)
 {
-    // (the month is looked up with 1..12 in a 0-based table: January shows "feb", and
-    // December read past the table in the original)
-    static const char *const months[13] = {"jan", "feb", "mar", "apr", "may", "jun", "jul",
-                                           "aug", "sep", "oct", "nov", "dec", ""};
+    // (the original's table sits on the stack one slot above where it is indexed with 1..12)
+    static const char *const months[13] = {"", "jan", "feb", "mar", "apr", "may", "jun",
+                                           "jul", "aug", "sep", "oct", "nov", "dec"};
     char line[0x200];
     if (_stricmp(cwd, "/") == 0) {
         g_FDriveValid = XapiValidateDiskPartition((POBJECT_STRING)FDriveDevice());
