@@ -18,6 +18,8 @@ void IgrInstall();                 // 0x23BA0 the in-game reset (igr.cpp)
 
 void InitHardDisk();               // 0x23820 drive letters, SMART (hdd.cpp)
 bool ReadDiskSector(DWORD sector, void *buf); // 0x23060 (hdd.cpp)
+void RelinkDrives();               // 0x23150 drive letters again after a format (hdd.cpp)
+ANSI_STRING *FDriveDevice();       // F:'s device, \Device\Harddisk0\Partition6 (hdd.cpp)
 
 // the drive (InitHardDisk)
 struct AtaRegisters {              // 16 bytes

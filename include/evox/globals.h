@@ -37,3 +37,5 @@ extern bool g_Unknown57E5C0;         // 0x57E5C0 a message for the screen is in 
 extern char g_Unknown47CFE0[0x100];  // 0x47CFE0
 extern bool g_HasFDrive;             // 0x58FB01 F: is set up (InitHardDisk)
 extern bool g_HasGDrive;             // 0x590538 G: is set up (InitHardDisk)
+extern volatile bool g_StopNetwork;  // 0x591AA2 asks the network threads to end (launch.cpp)
+extern volatile int g_NetThreads;    // 0x591AA4 network threads still running (launch.cpp)

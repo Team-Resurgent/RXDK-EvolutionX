@@ -6,6 +6,7 @@
 #pragma once
 #include <xtl.h>
 #include <stdio.h>
+#include "evox/ftp.h"
 #include "evox/menu.h"
 #include "evox/xbfont.h"
 #include "evox/xbinput.h"
@@ -27,16 +28,6 @@ public:
     CDebugServer(); // 0x22FA0
     BYTE raw[0x41D];
     bool m_quit;    // +0x41D the dashboard should exit
-};
-
-class CFtpServer { // 0x5E0 bytes
-public:
-    CFtpServer(); // 0x14D90
-    BYTE raw[0x35C];
-    bool m_message;          // +0x35C a message for the screen is waiting
-    char m_messageText[0x200]; // +0x35D
-    bool m_quit;             // +0x55D
-    BYTE unk55E[0x5E0 - 0x55E];
 };
 
 // ---- the dashboard -------------------------------------------------------------------------
