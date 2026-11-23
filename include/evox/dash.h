@@ -6,6 +6,7 @@
 #pragma once
 #include <xtl.h>
 #include <stdio.h>
+#include "evox/debugserver.h"
 #include "evox/ftp.h"
 #include "evox/menu.h"
 #include "evox/xbfont.h"
@@ -21,13 +22,6 @@ struct SkinLabel {          // 0x418 bytes, a text label of the skin
     DWORD flags;            // +0x010 XBFONT_*
     WCHAR text[0x200];      // +0x014 with <variables>
     SkinLabel *next;        // +0x414
-};
-
-class CDebugServer { // 0x41E bytes
-public:
-    CDebugServer(); // 0x22FA0
-    BYTE raw[0x41D];
-    bool m_quit;    // +0x41D the dashboard should exit
 };
 
 // ---- the dashboard -------------------------------------------------------------------------
