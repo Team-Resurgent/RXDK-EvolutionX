@@ -20,10 +20,9 @@
 static BYTE s_NoIdentify[0x200]; // until IdentifyDrive is rebuilt: an all-zero IDENTIFY block
 BYTE *g_DriveIdentify = s_NoIdentify;
 void IdentifyDrive() { PENDING("IdentifyDrive", 0x236E0); }
-void AtaCommand(AtaRegisters *) { PENDING("AtaCommand", 0x23530); }
+bool AtaCommand(AtaRegisters *) { PENDING("AtaCommand", 0x23530); return false; }
 void SmartEnabled237C0() { PENDING("SmartEnabled237C0", 0x237C0); }
 void Func235F0() { PENDING("Func235F0", 0x235F0); }
-CTelnetServer::CTelnetServer() { PENDING("CTelnetServer::CTelnetServer", 0x17390); }
 
 // the dashboard
 HRESULT InitDevices23D70() { PENDING("InitDevices23D70", 0x23D70); return S_OK; }

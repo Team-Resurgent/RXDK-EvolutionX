@@ -32,6 +32,36 @@ BYTE g_SmartData[0x200]; // 0x590548 SMART attributes
 // 0x590C50. Raw disk reads need an aligned buffer (an odd address fails with
 // STATUS_INVALID_PARAMETER); the original's was aligned by where it happened to land.
 alignas(16) static BYTE g_Sector[0x200];
+BYTE g_HddPassword[0x20];                       // 0x590314
+alignas(16) static BYTE g_IdentifyBuffer[0x200]; // 0x590A48
+
+// 0x235D0
+bool HddPasswordMissing()
+{
+    for (int i = 0; i < 0x10; i++)
+        if (g_HddPassword[i])
+            return false;
+    return true;
+}
+
+// 0x23650: an ATA security command (0xF1 SET PASSWORD, 0xF2 UNLOCK, 0xF6 DISABLE PASSWORD) with
+// its 512-byte data block: the control word (0 user, 1 master password) and the 32-byte password.
+// The IDENTIFY data is cleared first (the callers read it again). (The original sends a stack
+// buffer with only those first 34 bytes set; the rest is zero here.)
+bool AtaSecurityCommand(BYTE command, WORD control, const BYTE *password)
+{
+    g_DriveIdentify = g_IdentifyBuffer;
+    memset(g_IdentifyBuffer, 0, sizeof g_IdentifyBuffer);
+    alignas(16) BYTE data[0x200] = {};
+    memcpy(data, &control, 2);
+    memcpy(data + 2, password, 0x20);
+    AtaRegisters r = {};
+    r.command = command;
+    r.unk07 = 1;
+    r.dataSize = 0x200;
+    r.data = data;
+    return AtaCommand(&r);
+}
 
 static NTSTATUS Link(DriveLink &d) { return IoCreateSymbolicLink(&d.letter, &d.device); }
 

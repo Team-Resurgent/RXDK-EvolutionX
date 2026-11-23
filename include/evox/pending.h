@@ -21,19 +21,20 @@ bool ReadDiskSector(DWORD sector, void *buf); // 0x23060 (hdd.cpp)
 
 // the drive (InitHardDisk)
 struct AtaRegisters {              // 16 bytes
-    BYTE features, sectorCount, lbaLow, lbaMid, lbaHigh, device, command, unk07;
-    BYTE unk08[8];
+    BYTE features, sectorCount, lbaLow, lbaMid, lbaHigh, device, command;
+    BYTE unk07;                    // 1 for the commands without a data-in block (SMART ENABLE, security)
+    DWORD dataSize;                // +0x08 the data block (0x200), if any
+    void *data;                    // +0x0C
 };
 extern BYTE *g_DriveIdentify;      // 0x58FB08 the drive's IDENTIFY data (512 bytes)
 void IdentifyDrive();              // 0x236E0
-void AtaCommand(AtaRegisters *r);  // 0x23530
+bool AtaCommand(AtaRegisters *r);  // 0x23530
 void SmartEnabled237C0();          // 0x237C0
 void Func235F0();                  // 0x235F0 end of InitHardDisk
-
-class CTelnetServer { // 0x1220 bytes, created by main and never deleted
-public:
-    CTelnetServer(); // 0x17390
-};
+// the drive's security commands (hdd.cpp)
+extern BYTE g_HddPassword[0x20];   // 0x590314 the drive's lock password (set by the drive code)
+bool HddPasswordMissing();         // 0x235D0 its first 16 bytes are all zero
+bool AtaSecurityCommand(BYTE command, WORD control, const BYTE *password); // 0x23650
 
 // the dashboard
 HRESULT InitDevices23D70();               // 0x23D70 in Create
