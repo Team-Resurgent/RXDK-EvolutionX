@@ -13,7 +13,7 @@ static_assert(sizeof(MD5_CTX) == 0x58, "MD5_CTX");
     (a) += f((b), (c), (d)) + (x) + (DWORD)(ac); \
     (a) = ROL((a), (s)) + (b)
 
-// 0x117C0
+// 0x117C0 (callers go through the jump at 0x11890)
 void MD5Init(MD5_CTX *ctx)
 {
     ctx->count[0] = ctx->count[1] = 0;
@@ -23,6 +23,7 @@ void MD5Init(MD5_CTX *ctx)
     ctx->state[3] = 0x10325476;
 }
 
+// 0x118A0; Encode (0x117F0, in MD5Final) and Decode (0x11840, here) are written inline
 static void Transform(DWORD state[4], const BYTE block[64])
 {
     DWORD a = state[0], b = state[1], c = state[2], d = state[3], x[16];

@@ -36,7 +36,7 @@ SkinVar g_SkinVars[19] = {
 
 static WCHAR g_Expanded[0x400]; // 0x47C4E0
 
-// Copy text, replacing each "<Name>" (any case) with its value; an unknown name gives
+// 0x20F50: copy text, replacing each "<Name>" (any case) with its value; an unknown name gives
 // "Env error!", a '<' without '>' the whole result "Error in string!". (No bounds checks, as in
 // the original: names are copied into a 64-character buffer.)
 const WCHAR *ExpandSkinVars(const WCHAR *text)
