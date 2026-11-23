@@ -33,7 +33,6 @@ const BYTE *KeyboardGetKeystroke() { PENDING_ONCE("KeyboardGetKeystroke", 0x2403
 void Func20F20() { PENDING("Func20F20", 0x20F20); }
 
 // stub classes from dash.h
-CDebugServer::CDebugServer() { memset(this, 0, sizeof *this); PENDING("CDebugServer::CDebugServer", 0x22FA0); }
 CFtpServer::CFtpServer() { memset(this, 0, sizeof *this); PENDING("CFtpServer::CFtpServer", 0x14D90); }
 
 void CEvoxDash::SaveTrainerOptions() { PENDING("CEvoxDash::SaveTrainerOptions", 0x1B380); }
