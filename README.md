@@ -21,15 +21,16 @@ an XBE, reboot, power off), the settings screen with its keyboards, the drive le
 skin and trainer folder scans, and the `[Menu]` parser with its game folder scan (`AutoAddItem`),
 and the per-frame tasks: the live information for the skin variables and the settings screen
 (clock text, free space, network, BIOS and kernel versions, temperatures, Chameleon), the DVD tray
-and disc check, memory units and the SNTP clock, Backup, and the in-game reset install (its loader
-and TSRs are taken from `evoxdash.xbe` like the graphics). In xemu the start screen (background,
-logo, selection bar and main menu) matches the original's pixel for pixel outside the turning
-logo, with the built-in menu and with a `[Menu]`, and every skin variable reads the same as in the
-original (`tools/make_info_test.py` makes a skin that shows them all). What is called but not
-rebuilt yet (the other screens, the servers) is in `include/evox/pending.h` and the stub classes
-in `include/evox/dash.h`: stubs in `src/pending.cpp` log `pending: <name> (<original address>)`
-and return a neutral result. Source comments give each function's address in the original, so it
-can be checked against the disassembly.
+and disc check, memory units and the SNTP clock, Backup, the in-game reset install (its loader and
+TSRs are taken from `evoxdash.xbe` like the graphics), and the three network servers: FTP (port
+21), Telnet (23) and the RDTOOLS debug server (731, xbdm-style). In xemu the start screen
+(background, logo, selection bar and main menu) matches the original's pixel for pixel outside the
+turning logo, with the built-in menu and with a `[Menu]`, and every skin variable reads the same
+as in the original (`tools/make_info_test.py` makes a skin that shows them all). What is called
+but not rebuilt yet (the other screens) is in `include/evox/pending.h` and the stub classes in
+`include/evox/dash.h`: stubs in `src/pending.cpp` log `pending: <name> (<original address>)` and
+return a neutral result. Source comments give each function's address in the original, so it can
+be checked against the disassembly.
 
 The rebuild links RXDK's D3D8, D3DX8, XGraphics, XNet, XAPI and C runtime in place of the XDK ones
 that the original carried. The output XBE is not packed.
@@ -109,3 +110,15 @@ images and with its own decoding of the TSR.
 `tools/gen_test_script.py` lists the script commands. `EVOX_TEST_INI` loads and saves
 `e:\evox.ini` in place of `q:\evox.ini`, so run it on a throwaway HDD (xemu's `-snapshot`). The
 log lines start with `test`.
+
+## Network tests
+
+`tools/server_test.py ftp|telnet|debug` runs a session against the servers in xemu and prints the
+transcript; the same session against the original and the rebuild gives identical transcripts
+(FTP up to the file times). It uses only commands that read, and files under `E:\evoxtest`; it
+never sends FLASHBIOS, EXECUTE, FORMATPATH, FORMATDRIVE, LIST of "/" (which validates F: and can
+format it), port or memory writes, or the drive lock commands.
+
+xemu needs NAT with forwards 2121->21, 2323->23 and 7310->731, and a hard disk without
+`xbdm.dll`: xbdm otherwise takes the first DHCP address, which the forwards go to. Use a copy of
+the HDD image with the file renamed, never the original.

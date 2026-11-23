@@ -135,7 +135,70 @@ def ftp(port):
     s.close()
 
 
+# Telnet: only commands that read (no O, SaveMem, TEST2 or hddlock*: they write ports, memory,
+# PCI registers or the drive's security state)
+TELNET_LINES = [
+    'dir',
+    'dir e:\\',
+    'memdump',
+    'memdump 80010000 40',
+    'hddsectordump 0 1',
+    'smbusdump a8 10 b',
+    'smbusdump',
+    'pcidump',
+    'nosuchcommand',
+    'exit',
+]
+
+
+def telnet(port):
+    s = socket.create_connection((HOST, port), timeout=10)
+
+    def show(text):
+        print(text, end='' if text.endswith('\n') else '\n')
+
+    show('<< ' + recv_reply(s, 1.5).replace('\r', ''))
+    for line in TELNET_LINES:
+        show('>> ' + line)
+        s.sendall((line + '\r\n').encode('latin-1'))
+        show('<< ' + recv_reply(s, 2.0).replace('\r', ''))
+    s.close()
+
+
+# the RDTOOLS debug server (xbdm-style, port 731): only commands that read (no DELETE, MKDIR,
+# RENAME, SENDFILE, SETFILEATTRIBUTES, SETSYSTIME, GO, MAGICBOOT, REBOOT or TITLE)
+DEBUG_LINES = [
+    'drivelist',
+    'drivefreespace name="E:\\"',
+    'dirlist name="C:\\"',
+    'getfileattributes name="C:\\xboxdash.xbe"',
+    'getfileattributes name="C:\\nosuchfile"',
+    'xbeinfo name="C:\\xboxdash.xbe"',
+    'getfile name="C:\\xlaunch.ini"',
+    'nosuchcommand',
+    'bye',
+]
+
+
+def debug(port):
+    s = socket.create_connection((HOST, port), timeout=10)
+
+    def show(text):
+        print(text, end='' if text.endswith('\n') else '\n')
+
+    show('<< ' + recv_reply(s, 1.5))
+    for line in DEBUG_LINES:
+        show('>> ' + line)
+        s.sendall((line + '\r\n').encode('latin-1'))
+        show('<< ' + recv_reply(s, 2.0))
+    s.close()
+
+
 if __name__ == '__main__':
     what = sys.argv[1] if len(sys.argv) > 1 else 'ftp'
     if what == 'ftp':
         ftp(int(sys.argv[2]) if len(sys.argv) > 2 else 2121)
+    elif what == 'telnet':
+        telnet(int(sys.argv[2]) if len(sys.argv) > 2 else 2323)
+    elif what == 'debug':
+        debug(int(sys.argv[2]) if len(sys.argv) > 2 else 7310)
