@@ -49,7 +49,7 @@ Linked from the user's `evoxdash.xbe` at build time (`tools/extract_assets.py`),
 |---|---|---|---|
 | `g_EmbeddedXpr` | 0x83750 | 0x11000 | XPR, 2 resources (CEmbeddedResource, `0x25250`) |
 | `g_ResourceXpr` | 0xCF240 | 0x26E000 | XPR, 4 resources; tags `xray1.bmp`, `xray2.bmp` at 0x94D70 (CXBPackedResource, `0x26180`) |
-| `g_LogoMesh` | 0x33D240 | 0x96F00 | XBG mesh `XBG`, 1 frame (CXBMesh, `0x25C80`) |
+| `g_LogoMesh` | 0x33D240 | 0x96F00 | XBG mesh `XBG\x02`, 1 frame (CXBMesh, `0x25C80`) |
 
 0x97450..0xB8000 in .data is x86 code, not an asset: a separately built image EvoX carries
 (likely the in-game-reset payload installed on exit). To be looked at with the IGR code.
