@@ -20,9 +20,7 @@
 void InitHardDisk() { PENDING("InitHardDisk", 0x23820); }
 BYTE ChameleonRead(int) { PENDING("ChameleonRead", 0x1F300); return 0; }
 void ChameleonSetLed(int) { PENDING("ChameleonSetLed", 0x1F3C0); }
-void PrepareForExit() { PENDING("PrepareForExit", 0x24140); }
 void IgrInstall() { PENDING("IgrInstall", 0x23BA0); }
-void IgrFinish() { PENDING("IgrFinish", 0x23450); }
 CTelnetServer::CTelnetServer() { PENDING("CTelnetServer::CTelnetServer", 0x17390); }
 
 // the dashboard
@@ -32,8 +30,6 @@ int KeyboardPoll() { PENDING_ONCE("KeyboardPoll", 0x23E10); return 0; }
 const BYTE *KeyboardGetKeystroke() { PENDING_ONCE("KeyboardGetKeystroke", 0x24030); return nullptr; }
 void ChameleonSetColour(int) { PENDING("ChameleonSetColour", 0x1F400); }
 void ChameleonSetFlash(int) { PENDING("ChameleonSetFlash", 0x1F380); }
-void LaunchXbe(const char *path) { Log("pending: LaunchXbe (0x232A0) %s\n", path); }
-void SetTrainer(int) { PENDING("SetTrainer", 0x23420); }
 void Func20F20() { PENDING("Func20F20", 0x20F20); }
 void Func20460() { PENDING("Func20460", 0x20460); }
 void ClockTick() { PENDING_ONCE("ClockTick", 0x12390); }

@@ -28,7 +28,7 @@ static void DetectXboxVersion()
 }
 
 // 0x218D0: is a debug monitor (xbdm) loaded? (KPRCB +0x250, as XAPI tests it)
-static bool DebugMonitorPresent()
+bool DebugMonitorPresent()
 {
     BYTE *prcb;
     __asm__ volatile("movl %%fs:0x20, %0" : "=r"(prcb));
@@ -53,6 +53,18 @@ static const DWORD s_NicRegs11[0x100] = {
     [0x268 / 4] = 0xFE020001, [0x278 / 4] = 0xFE020001,
 };
 
+// Without a debug monitor: write the NIC register block (main at start-up, and PrepareForExit;
+// the original has the loop inline in both)
+void ResetNicRegisters()
+{
+    if (DebugMonitorPresent())
+        return;
+    volatile DWORD *regs = (volatile DWORD *)0xFEF00000;
+    const DWORD *src = g_XboxVersion == 10 ? s_NicRegs10 : s_NicRegs11;
+    for (int i = 0; i < 0x100; i++)
+        regs[i] = src[i];
+}
+
 static ANSI_STRING s_DashRootString;                                  // 0x591A90
 static ANSI_STRING s_QDrive = {6, 7, (PCHAR) "\\??\\Q:"};             // 0xCF200
 
@@ -66,12 +78,7 @@ void __cdecl main()
     Log("\n\r\n\nMain : Start!\n\r");
     DetectXboxVersion();
     Log("Main : Fill!\n\r");
-    if (!DebugMonitorPresent()) {
-        volatile DWORD *regs = (volatile DWORD *)0xFEF00000;
-        const DWORD *src = g_XboxVersion == 10 ? s_NicRegs10 : s_NicRegs11;
-        for (int i = 0; i < 0x100; i++)
-            regs[i] = src[i];
-    }
+    ResetNicRegisters();
     Log("Main : Done!\n\r");
 
     // Q: is the directory this XBE was started from

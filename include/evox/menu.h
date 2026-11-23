@@ -16,7 +16,7 @@ struct CMenuItem {           // 0x2C bytes
     CMenu *submenu;          // +0x1C action 100
     DWORD m_20;              // +0x20
     DWORD flags;             // +0x24 0x100, 0x200 trainer, 0x400/0x800 IGR, 0x3000 region; LED bits
-    int trainer;             // +0x28
+    char *trainer;           // +0x28 trainer path (action 8, flag 0x200)
 };
 
 struct CMenu {               // 0x24 bytes
