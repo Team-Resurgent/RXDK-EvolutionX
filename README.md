@@ -15,9 +15,12 @@ the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Mi
 `Destroy`, `Render` (draw passes, fade of the last title's screen, screenshot, screen saver) and
 `Run` (the frame loop with its action and fade state machines), the sample-framework classes EvoX
 built in (font, XBG mesh, packed resources), the drawing helpers, the skin's text labels and
-variables, and the logo: in xemu the turning chrome EvolutionX logo is drawn. The background and
-the menus follow with the skin loader and the menu code. What `main` calls
-but is not rebuilt yet is in `include/evox/pending.h`: stubs in `src/pending.cpp` log
+variables, the logo, skin loading (`[Skin_<name>]` in evox.ini, else the built-in pictures), the
+menu class, the built-in main menu and the menu screen with its input. In xemu the start screen
+(background, logo, selection bar and main menu) matches the original's pixel for pixel outside
+the turning logo. What is called but not rebuilt yet (the settings and other screens, the
+servers, the folder scans, the `[Menu]` parser, launching) is in `include/evox/pending.h` and
+the stub classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log
 `pending: <name> (<original address>)` and return a neutral result. Source comments give each
 function's address in the original, so it can be checked against the disassembly.
 

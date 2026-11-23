@@ -5,6 +5,8 @@
 // original; names say what the code does with them, "m_<offset>" where that is not known yet.
 #pragma once
 #include <xtl.h>
+#include <stdio.h>
+#include "evox/menu.h"
 #include "evox/xbfont.h"
 #include "evox/xbinput.h"
 #include "evox/xbmesh.h"
@@ -19,24 +21,6 @@ struct SkinLabel {          // 0x418 bytes, a text label of the skin
     WCHAR text[0x200];      // +0x014 with <variables>
     SkinLabel *next;        // +0x414
 };
-
-struct CMenuItem {          // (partial)
-    BYTE unk00[0x10];
-    char *path;             // +0x10 XBE or skin to launch / load
-    BYTE unk14[0x08];
-    struct CMenu *submenu;  // +0x1C
-    BYTE unk20[0x04];
-    DWORD flags;            // +0x24 0x100, 0x200 trainer, 0x400/0x800 IGR, 0x3000 region
-    int trainer;            // +0x28
-};
-
-struct CMenu {              // 0x24 bytes (partial)
-    BYTE unk00[0x1C];
-    int selected;           // +0x1C
-    BYTE unk20[0x04];
-    CMenuItem *GetItem(int index); // 0x24E90
-};
-static_assert(sizeof(CMenu) == 0x24, "CMenu");
 
 class CDebugServer { // 0x41E bytes
 public:
@@ -71,15 +55,23 @@ public:
     void DrawLabels();    // 0x1CA50
     void DrawQuad(IDirect3DTexture8 *tex, float alpha, void *verts);                     // 0x17450
     void DrawRect(float left, float top, float right, float bottom, DWORD fill, DWORD border); // 0x18140
+    void LoadSkin(const char *name);                  // 0x1CC80
+    void LoadBackground();                            // 0x17580
+    void LoadLaunchPicture();                         // 0x17910
+    void LoadLabels();                                // 0x1C890
+    void InitItems();                                 // 0x1D680
+    void DrawMenu();                                  // 0x18320 (m_drawMenu)
 
     // not rebuilt yet (src/pending.cpp)
-    void InitItems();                                 // 0x1D680 paths, items.txt
-    void LoadSkin(const char *name);                  // 0x1CC80
-    void ReleaseSkin();                               // 0x195E0
+    void SaveTrainerFile();                           // 0x195E0 E:\TDATA\EVOX\Evox.etf
+    void ScanBios(const char *dir);                   // 0x19480 the BIOS menu
+    void ScanSkins(const char *dir);                  // 0x1D440 the skin menu
+    void ScanTrainers(const char *dir);               // 0x19750 the trainer menu
+    void PrepareMenuLine(char *line);                 // 0x199A0
+    void ParseMenuSection(CMenu *menu);               // 0x19B20 a [Menu] section block
     void OpenSettings();                              // 0x1A150 action 9
     void OpenFileView(const char *path);              // 0x1B130 action 34
     void OpenItem();                                  // 0x1CAC0 actions 200..299
-    void DrawMenu();                                  // 0x18320 (m_drawMenu)
     void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
     void DrawSettings();                              // 0x1B820 (m_drawSettings)
     void DrawPass18D10();                             // 0x18D10 (m_drawE98)
@@ -116,7 +108,7 @@ public:
     BYTE pad265[3];
     int m_labelAlpha;                // +0x268 0..255
     float m_persistAlpha;            // +0x26C
-    int m_270;
+    int m_270;                       // +0x270 the selection while DrawMenu handles input
     bool m_drawMenu;                 // +0x274
     BYTE pad275[3];
     int m_278;
@@ -148,7 +140,9 @@ public:
     bool m_10D0;
     BYTE pad10D1[3];
     int m_10D4;
-    BYTE unk10D8[0x10E4 - 0x10D8];
+    BYTE unk10D8[4];
+    FILE *m_itemsFile;               // +0x10DC q:\items.txt being written
+    char *m_menuLine;                // +0x10E0 [Menu] line being parsed
     float m_fadeAlpha;               // +0x10E4 state 1: fade out before leaving Run
     int m_logoType;                  // +0x10E8 [skin] LogoType, 0..4
     bool m_autoLaunchDvd;            // +0x10EC [Misc] AutoLaunchDVD
@@ -158,7 +152,11 @@ public:
     bool m_autoLaunchGames;          // +0x14EE [Misc] AutoLaunchGames
     BYTE pad14EF;
     struct SkinLabel *m_labels;      // +0x14F0 the skin's text labels
-    BYTE unk14F4[0x1911 - 0x14F4];
+    DWORD m_barColor1;               // +0x14F4 [skin] BarColor1: the selection bar
+    DWORD m_barColor2;               // +0x14F8 [skin] BarColor2: its outline
+    float m_barAlpha;                // +0x14FC [skin] BarAlpha
+    DWORD m_menuColour[3];           // +0x1500 [skin] MenuColor1..3
+    BYTE unk150C[0x1911 - 0x150C];
     bool m_1911;
     BYTE unk1912[0x1920 - 0x1912];
     const BYTE *m_keystroke;         // +0x1920 last keyboard keystroke, or NULL
