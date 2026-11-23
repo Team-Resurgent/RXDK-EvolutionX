@@ -63,6 +63,29 @@ static bool PartitionIsFatx(DWORD sector)
     return memcmp(g_Sector, "FATX", 4) == 0;
 }
 
+// 0x23150: after a format, link each drive letter whose link status is still 0 (never linked, or
+// linked successfully: a second link then fails and stores its error, as in the original)
+void RelinkDrives()
+{
+    if (g_LinkStatusE == 0 && PartitionIsFatx(0x55F400))
+        g_LinkStatusE = Link(s_DriveE);
+    if (g_LinkStatusC == 0 && PartitionIsFatx(0x465400))
+        g_LinkStatusC = Link(s_DriveC);
+    if (g_LinkStatusF == 0 && PartitionIsFatx(0xEE8AB0) && g_HasFDrive)
+        g_LinkStatusF = Link(s_DriveF);
+    if (g_LinkStatusG == 0 && g_HasGDrive)
+        g_LinkStatusG = Link(s_DriveG);
+    if (g_LinkStatusX == 0 && PartitionIsFatx(0x400))
+        g_LinkStatusX = Link(s_DriveX);
+    if (g_LinkStatusY == 0 && PartitionIsFatx(0x177400))
+        g_LinkStatusY = Link(s_DriveY);
+    if (g_LinkStatusZ == 0 && PartitionIsFatx(0x2EE400))
+        g_LinkStatusZ = Link(s_DriveZ);
+}
+
+// F:'s device (0x95D0C), which the FTP server's LIST of "/" validates
+ANSI_STRING *FDriveDevice() { return &s_DriveF.device; }
+
 // 0x23820: drive letters (D: the DVD drive; C: and E: when their partitions are FATX, F: with
 // [MISC] UseFDrive, G: with UseGDrive, X: Y: Z: the cache partitions), the file cache, and SMART
 void InitHardDisk()
