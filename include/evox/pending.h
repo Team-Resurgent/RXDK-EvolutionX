@@ -14,7 +14,19 @@ void SetTrainer(const char *trainer); // 0x23420
 void PrepareForExit();             // 0x24140 network down before halting or launching
 void IgrFinish();                  // 0x23450 write the launch data, quick reboot
 
-void InitHardDisk();               // 0x23820 "Main : Init Hdd!!"
+void InitHardDisk();               // 0x23820 drive letters, SMART (hdd.cpp)
+bool ReadDiskSector(DWORD sector, void *buf); // 0x23060 (hdd.cpp)
+
+// the drive (InitHardDisk)
+struct AtaRegisters {              // 16 bytes
+    BYTE features, sectorCount, lbaLow, lbaMid, lbaHigh, device, command, unk07;
+    BYTE unk08[8];
+};
+extern BYTE *g_DriveIdentify;      // 0x58FB08 the drive's IDENTIFY data (512 bytes)
+void IdentifyDrive();              // 0x236E0
+void AtaCommand(AtaRegisters *r);  // 0x23530
+void SmartEnabled237C0();          // 0x237C0
+void Func235F0();                  // 0x235F0 end of InitHardDisk
 BYTE ChameleonRead(int reg);       // 0x1F300 0xAA from reg 0: a Chameleon is fitted
 void ChameleonSetLed(int on);      // 0x1F3C0
 void IgrInstall();                 // 0x23BA0

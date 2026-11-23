@@ -16,10 +16,12 @@ the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Mi
 `Run` (the frame loop with its action and fade state machines), the sample-framework classes EvoX
 built in (font, XBG mesh, packed resources), the drawing helpers, the skin's text labels and
 variables, the logo, skin loading (`[Skin_<name>]` in evox.ini, else the built-in pictures), the
-menu class, the built-in main menu and the menu screen with its input. In xemu the start screen
-(background, logo, selection bar and main menu) matches the original's pixel for pixel outside
-the turning logo. What is called but not rebuilt yet (the settings and other screens, the
-servers, the folder scans, the `[Menu]` parser, launching) is in `include/evox/pending.h` and
+menu class, the built-in main menu and the menu screen with its input, the menu actions
+(launching an XBE, reboot, power off), the settings screen with its keyboards, and the drive
+letters. In xemu the start screen (background, logo, selection bar and main menu) matches the
+original's pixel for pixel outside the turning logo. What is called but not rebuilt yet (the
+other screens, the servers, the folder scans, the `[Menu]` parser, the in-game reset, the live
+info) is in `include/evox/pending.h` and
 the stub classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log
 `pending: <name> (<original address>)` and return a neutral result. Source comments give each
 function's address in the original, so it can be checked against the disassembly.
@@ -70,3 +72,19 @@ rea/decomp --provider ghidra` then writes Ghidra pseudocode for every function.
 `EXTRA_CFLAGS=-DEVOX_UART_LOG ./build.sh` also writes the debug log to the COM1 UART, which xemu
 shows with `-device lpc47m157 -serial stdio` (or `-serial file:<path>`). `tools/disasm.py <addr>`
 disassembles one function of the original with strings and kernel imports named.
+
+## Button tests
+
+A test script presses controller buttons at given frames of the frame loop, so a screen can be
+driven in xemu without a pad. `tests/settings.txt` opens Settings, sets Setup Network to Yes with
+the Yes/No keyboard, types a new FTP password on the text keyboard, then picks Save And Exit and
+prints the saved `evox.ini` to the log:
+
+```bash
+python tools/gen_test_script.py tests/settings.txt work/test/settings.h
+EXTRA_CFLAGS='-DEVOX_UART_LOG -DEVOX_TEST_SCRIPT="../work/test/settings.h" -DEVOX_TEST_INI' ./build.sh
+```
+
+`tools/gen_test_script.py` lists the script commands. `EVOX_TEST_INI` loads and saves
+`e:\evox.ini` in place of `q:\evox.ini`, so run it on a throwaway HDD (xemu's `-snapshot`). The
+log lines start with `test`.

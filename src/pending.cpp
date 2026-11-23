@@ -17,7 +17,12 @@
     } while (0)
 
 // main
-void InitHardDisk() { PENDING("InitHardDisk", 0x23820); }
+static BYTE s_NoIdentify[0x200]; // until IdentifyDrive is rebuilt: an all-zero IDENTIFY block
+BYTE *g_DriveIdentify = s_NoIdentify;
+void IdentifyDrive() { PENDING("IdentifyDrive", 0x236E0); }
+void AtaCommand(AtaRegisters *) { PENDING("AtaCommand", 0x23530); }
+void SmartEnabled237C0() { PENDING("SmartEnabled237C0", 0x237C0); }
+void Func235F0() { PENDING("Func235F0", 0x235F0); }
 BYTE ChameleonRead(int) { PENDING("ChameleonRead", 0x1F300); return 0; }
 void ChameleonSetLed(int) { PENDING("ChameleonSetLed", 0x1F3C0); }
 void IgrInstall() { PENDING("IgrInstall", 0x23BA0); }

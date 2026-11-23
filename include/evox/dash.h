@@ -65,6 +65,9 @@ public:
     void SaveSettings();                              // 0x1B440 "Save And Exit"
     void DrawSettings();                              // 0x1B820 (m_drawSettings)
     void KeyboardInput();                             // (part of DrawSettings)
+#ifdef EVOX_TEST_SCRIPT
+    void RunTestScript();                             // test builds: src/testscript.cpp
+#endif
 
     // not rebuilt yet (src/pending.cpp)
     void SaveTrainerOptions();                        // 0x1B380 the trainer options screen

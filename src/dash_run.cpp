@@ -136,6 +136,9 @@ void CEvoxDash::Run()
             m_key = 0;
             m_keyFlags = 0;
         }
+#ifdef EVOX_TEST_SCRIPT
+        RunTestScript();
+#endif
 
         // timing
         QueryPerformanceCounter(&qwTime);
