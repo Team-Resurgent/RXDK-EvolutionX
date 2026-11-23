@@ -399,7 +399,7 @@ void CEvoxDash::Run()
         case 5:
             FadeDown(m_fade);
             if ((m_E9C += 8) > 0xFF) {
-                Func20460();
+                StartBackup();
                 m_state = 6;
                 m_E9C = 0xFF;
             }

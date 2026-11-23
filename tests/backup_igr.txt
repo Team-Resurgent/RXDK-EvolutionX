@@ -1,0 +1,15 @@
+# Backup (menu action 11) and the in-game reset install. Run from out/ without EVOX_TEST_INI:
+# the dashboard runs from the DVD drive, so the backup goes to c:\backup. "igr" patches the
+# running kernel (sandbox only); nothing reboots. Compare the hashes with xemu's flash, EEPROM
+# and HDD images and with the decoded TSR:
+#   python tools/check_backup_igr.py work/serial.log <flash> <eeprom> <hdd image>
+200 action 11                # Backup: fade down, the thread, "Backingup :)", fade up
++400 dump c:\backup\hddinfo.txt
++1 hash c:\backup\bios.bin
++1 hash c:\backup\disk.bin
++1 blocks c:\backup\disk.bin
++1 hash c:\backup\eeprom.bin
++1 hash c:\backup\hddkey.bin
++10 igr
++1 hash E:\TDATA\EVOX\evox.ell
++1 log done

@@ -39,10 +39,10 @@ Start-up: entry 0x29F53 (XAPI) creates the main thread at 0x29EDF, which runs th
 | .rdata | 0x7D5C0..0x836DC | kernel thunk, strings, constants | data |
 | .data | 0x836E0..0x595898 | 3.3 MB raw / 5.3 MB virtual: strings, globals and the assets below | data |
 | _text | 0x5958A0..0x59641D | in-game reset / ELL support; the build number 3935 (0x595963); the audio CD reader from 0x59617F (`src/cdaudio.cpp`) | yes |
-| text | 0x596420..0x596919 | ELL loader (`tdata\evox\evox.ell`) | yes |
+| text | 0x596420..0x596919 | the code filling in the IGR loader's kernel addresses (rebuilt in `src/igr.cpp`), then the loader itself (`g_IgrLoader`, from 0x596473) | asset |
 
 
-## Assets in .data
+## Assets
 
 Linked from the user's `evoxdash.xbe` at build time (`tools/extract_assets.py`), not committed:
 
@@ -51,6 +51,9 @@ Linked from the user's `evoxdash.xbe` at build time (`tools/extract_assets.py`),
 | `g_FontXpr` | 0x83750 | 0x11000 | XPR: font texture + glyph table (CXBFont, `0x25250`) |
 | `g_ResourceXpr` | 0xCF240 | 0x26E000 | XPR, 4 resources; tags `xray1.bmp`, `xray2.bmp` at 0x94D70 (CXBPackedResource, `0x26180`) |
 | `g_LogoMesh` | 0x33D240 | 0x96F00 | XBG mesh `XBG\x02`, 1 frame (CXBMesh, `0x25C80`) |
+| `g_Tsr1` | 0x95D68 | 0x737C | in-game reset TSR for `TSR_Type` 1: a 16-byte header with two part sizes, then the parts, encoded |
+| `g_Tsr2` | 0x9D0E8 | 0x31900 | in-game reset TSR for `TSR_Type` 2, the same way |
+| `g_IgrLoader` | 0x596473 (`text`) | 0x4A2 | the loader the patched kernel calls, built to run at 0x80000010 |
 
-0x97450..0xB8000 in .data is x86 code, not an asset: a separately built image EvoX carries
-(likely the in-game-reset payload installed on exit). To be looked at with the IGR code.
+IgrInstall (`src/igr.cpp`) decodes the chosen TSR into `E:\TDATA\EVOX\evox.ell`, and copies the
+loader to 0x80000010 with its game region, flag and eight kernel addresses filled in.

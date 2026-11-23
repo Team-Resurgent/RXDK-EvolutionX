@@ -5,13 +5,17 @@
 #ifdef EVOX_TEST_SCRIPT
 #include <xtl.h>
 #include <stdio.h>
+#include "evox/assets.h"
 #include "evox/dash.h"
 #include "evox/log.h"
+#include "evox/md5.h"
+#include "evox/pending.h"
 
 struct TestStep {
     DWORD frame;
     char op;          // 'A' action, 'B' analog button, 'D' digital button, 'K' typed key, 'L' log,
-                      // 'F' dump file, 'M' dump the menus
+                      // 'F' dump file, 'M' dump the menus, 'H' file size and MD5, 'S' MD5 per 4 KB, 'I' install
+                      // the in-game reset now
     int arg;
     const char *text;
 };
@@ -69,6 +73,66 @@ void CEvoxDash::RunTestScript()
                 Log("(cannot open)\n");
             }
             Log("test %u: --- end ---\n", m_frame);
+            break;
+        }
+        case 'H': { // size and MD5 of a file
+            BYTE digest[16] = {};
+            long size = -1;
+            if (FILE *f = fopen(s.text, "rb")) {
+                MD5_CTX ctx;
+                MD5Init(&ctx);
+                static BYTE buf[0x10000];
+                size_t n;
+                size = 0;
+                while ((n = fread(buf, 1, sizeof buf, f)) > 0) {
+                    MD5Update(&ctx, buf, n);
+                    size += n;
+                }
+                fclose(f);
+                MD5Final(digest, &ctx);
+            }
+            Log("test %u: hash %s %ld ", m_frame, s.text, size);
+            for (BYTE b : digest)
+                Log("%02x", b);
+            Log("\n");
+            break;
+        }
+        case 'S': { // MD5 of each 4 KB block of a file
+            if (FILE *f = fopen(s.text, "rb")) {
+                static BYTE buf[0x1000];
+                for (int block = 0; fread(buf, 1, sizeof buf, f) == sizeof buf; block++) {
+                    MD5_CTX ctx;
+                    BYTE digest[16];
+                    MD5Init(&ctx);
+                    MD5Update(&ctx, buf, sizeof buf);
+                    MD5Final(digest, &ctx);
+                    Log("test %u: block %d ", m_frame, block);
+                    for (BYTE b : digest)
+                        Log("%02x", b);
+                    Log("\n");
+                }
+                fclose(f);
+            }
+            break;
+        }
+        case 'I': { // install the in-game reset now (no reboot) and show what changed
+            IgrInstall();
+            const BYTE *k = (const BYTE *)0x80010000;
+            for (DWORD at = 0; at < 0x25F00; at++)
+                if (k[at] == 0xFF && k[at + 1] == 0x15 && *(const DWORD *)(k + at + 2) == 0x80000010)
+                    Log("test %u: igr call at %08x\n", m_frame, 0x80010000 + at);
+            MD5_CTX ctx;
+            BYTE digest[16];
+            MD5Init(&ctx);
+            MD5Update(&ctx, (const BYTE *)0x80000010, g_IgrLoaderSize);
+            MD5Final(digest, &ctx);
+            Log("test %u: igr loader ", m_frame);
+            for (BYTE b : digest)
+                Log("%02x", b);
+            Log(" imports");
+            for (int i = 0; i < 8; i++)
+                Log(" %08x", ((const DWORD *)0x8000009E)[i]);
+            Log("\n");
             break;
         }
         case 'M':

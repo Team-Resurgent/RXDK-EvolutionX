@@ -74,6 +74,7 @@ public:
     void ParseMenuSection(CMenu *menu);               // 0x19B20 a [Menu] section block
     void AutoAddItem(CMenu *menu, char *dir, int depth); // 0x191B0 the games in a folder
     const WCHAR *GetXbeTitle(const char *path);       // 0x18DC0
+    void DrawBackupBox();                             // 0x18D10 (m_drawE98) src/backup.cpp
 #ifdef EVOX_TEST_SCRIPT
     void RunTestScript();                             // test builds: src/testscript.cpp
 #endif
@@ -84,7 +85,6 @@ public:
     void OpenFileView(const char *path);              // 0x1B130 action 34
     void OpenItem();                                  // 0x1CAC0 actions 200..299
     void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
-    void DrawPass18D10();                             // 0x18D10 (m_drawE98)
     void DrawMessage();                               // 0x18E30 (m_drawMessage)
 
     D3DPRESENT_PARAMETERS m_d3dpp;   // +0x004

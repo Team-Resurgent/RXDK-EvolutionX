@@ -201,7 +201,7 @@ void CEvoxDash::Render()
     if (m_drawSettings)
         DrawSettings();
     if (m_drawE98)
-        DrawPass18D10();
+        DrawBackupBox();
     if (m_drawMessage)
         DrawMessage();
     if (m_state == 1)
