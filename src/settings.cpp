@@ -7,6 +7,7 @@
 #include <wchar.h>
 #include "evox/dash.h"
 #include "evox/globals.h"
+#include "evox/info.h"
 #include "evox/inifile.h"
 #include "evox/pending.h"
 #include "evox/settings.h"
@@ -95,18 +96,6 @@ static int g_KeyRow;         // 0x47BF28
 static int g_KeyCol;         // 0x47BF2C
 static int g_KeyBlink;       // 0x47BF30 cursor blink counter
 static int g_SettingsRepeat; // 0x47BF24 frames until the next key / move
-
-// the read-only information (filled by the per-frame tasks; original addresses)
-WCHAR g_InfoNetType[0x40];     // 0x47CD20
-WCHAR g_InfoLineStatus[0x40];  // 0x57D3E8
-WCHAR g_InfoMac[0x40];         // 0x47C120
-WCHAR g_InfoSecurity[0x40];    // 0x590948
-WCHAR g_InfoHardware[0x40];    // 0x47C4A0
-WCHAR g_InfoChameleonRaw[0x20];   // 0x57D3A0
-WCHAR g_InfoChameleonSw1[0x20];   // 0x47C3E0
-WCHAR g_InfoChameleonSw2[0x20];   // 0x47C290
-WCHAR g_InfoChameleonMode[0x20];  // 0x47C358
-WCHAR g_InfoChameleonBank[0x20];  // 0x57D360
 
 static void ResetScreenSaver() { g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000; }
 

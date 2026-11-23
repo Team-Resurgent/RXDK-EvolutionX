@@ -9,6 +9,7 @@
 #include "evox/globals.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
+#include "evox/info.h"
 #include "evox/pending.h"
 
 #pragma clang diagnostic ignored "-Winvalid-offsetof" // (layout checks on purpose)
@@ -247,7 +248,7 @@ void CEvoxDash::Render()
     D3DDevice_Swap(0);
 
     ClockTick();
-    Tick1F610();
-    Tick1FE70();
-    Tick21820();
+    InfoTick();
+    TrayTick();
+    MuTick();
 }

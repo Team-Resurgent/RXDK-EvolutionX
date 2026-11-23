@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "evox/globals.h"
+#include "evox/info.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
 #include "evox/pending.h"
@@ -27,6 +28,7 @@ NTSTATUS g_LinkStatusC, g_LinkStatusE, g_LinkStatusF, g_LinkStatusG, g_LinkStatu
 bool g_EnableSmart;   // 0x590539 [MISC] EnableSMART
 BYTE g_HddTempId;     // 0x95CD0 [MISC] HDD_Temp_ID: the SMART attribute with the temperature
 bool g_SmartOn;       // 0x58FB00 SMART is enabled on the drive
+BYTE g_SmartData[0x200]; // 0x590548 SMART attributes
 // 0x590C50. Raw disk reads need an aligned buffer (an odd address fails with
 // STATUS_INVALID_PARAMETER); the original's was aligned by where it happened to land.
 alignas(16) static BYTE g_Sector[0x200];
@@ -122,4 +124,15 @@ void InitHardDisk()
     }
     Func235F0();
     g_Ini->Unlock();
+}
+
+// 0x234F0: the raw value of the SMART attribute [MISC] HDD_Temp_ID (12-byte entries from offset
+// 2); if there is none, SMART is taken as off
+int SmartTemperature()
+{
+    for (int i = 2; i < 0x160; i += 12)
+        if (g_SmartData[i] && g_SmartData[i] == g_HddTempId)
+            return g_SmartData[i + 5];
+    g_SmartOn = false;
+    return -1;
 }

@@ -38,7 +38,7 @@ Start-up: entry 0x29F53 (XAPI) creates the main thread at 0x29EDF, which runs th
 | XPP | 0x750E0..0x7D5A4 | XInput / peripherals | no: libxapi |
 | .rdata | 0x7D5C0..0x836DC | kernel thunk, strings, constants | data |
 | .data | 0x836E0..0x595898 | 3.3 MB raw / 5.3 MB virtual: strings, globals and the assets below | data |
-| _text | 0x5958A0..0x59641D | 7 functions: in-game reset / ELL support | yes |
+| _text | 0x5958A0..0x59641D | in-game reset / ELL support; the build number 3935 (0x595963); the audio CD reader from 0x59617F (`src/cdaudio.cpp`) | yes |
 | text | 0x596420..0x596919 | ELL loader (`tdata\evox\evox.ell`) | yes |
 
 

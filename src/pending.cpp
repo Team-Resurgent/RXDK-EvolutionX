@@ -23,8 +23,6 @@ void IdentifyDrive() { PENDING("IdentifyDrive", 0x236E0); }
 void AtaCommand(AtaRegisters *) { PENDING("AtaCommand", 0x23530); }
 void SmartEnabled237C0() { PENDING("SmartEnabled237C0", 0x237C0); }
 void Func235F0() { PENDING("Func235F0", 0x235F0); }
-BYTE ChameleonRead(int) { PENDING("ChameleonRead", 0x1F300); return 0; }
-void ChameleonSetLed(int) { PENDING("ChameleonSetLed", 0x1F3C0); }
 void IgrInstall() { PENDING("IgrInstall", 0x23BA0); }
 CTelnetServer::CTelnetServer() { PENDING("CTelnetServer::CTelnetServer", 0x17390); }
 
@@ -33,14 +31,8 @@ HRESULT InitDevices23D70() { PENDING("InitDevices23D70", 0x23D70); return S_OK; 
 HRESULT InitDevices23F70() { PENDING("InitDevices23F70", 0x23F70); return S_OK; }
 int KeyboardPoll() { PENDING_ONCE("KeyboardPoll", 0x23E10); return 0; }
 const BYTE *KeyboardGetKeystroke() { PENDING_ONCE("KeyboardGetKeystroke", 0x24030); return nullptr; }
-void ChameleonSetColour(int) { PENDING("ChameleonSetColour", 0x1F400); }
-void ChameleonSetFlash(int) { PENDING("ChameleonSetFlash", 0x1F380); }
 void Func20F20() { PENDING("Func20F20", 0x20F20); }
 void Func20460() { PENDING("Func20460", 0x20460); }
-void ClockTick() { PENDING_ONCE("ClockTick", 0x12390); }
-void Tick1F610() { PENDING_ONCE("Tick1F610", 0x1F610); }
-void Tick1FE70() { PENDING_ONCE("Tick1FE70", 0x1FE70); }
-void Tick21820() { PENDING_ONCE("Tick21820", 0x21820); }
 
 // stub classes from dash.h
 CDebugServer::CDebugServer() { memset(this, 0, sizeof *this); PENDING("CDebugServer::CDebugServer", 0x22FA0); }

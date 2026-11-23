@@ -3,6 +3,7 @@
 // classes that are still stubs are declared in include/evox/dash.h.
 #pragma once
 #include <xtl.h>
+#include "evox/chameleon.h"
 
 // main
 bool DebugMonitorPresent();        // 0x218D0 (main.cpp)
@@ -27,8 +28,6 @@ void IdentifyDrive();              // 0x236E0
 void AtaCommand(AtaRegisters *r);  // 0x23530
 void SmartEnabled237C0();          // 0x237C0
 void Func235F0();                  // 0x235F0 end of InitHardDisk
-BYTE ChameleonRead(int reg);       // 0x1F300 0xAA from reg 0: a Chameleon is fitted
-void ChameleonSetLed(int on);      // 0x1F3C0
 void IgrInstall();                 // 0x23BA0
 
 class CTelnetServer { // 0x1220 bytes, created by main and never deleted
@@ -41,11 +40,5 @@ HRESULT InitDevices23D70();               // 0x23D70 in Create
 HRESULT InitDevices23F70();               // 0x23F70 in Create
 int KeyboardPoll();                       // 0x23E10 each frame
 const BYTE *KeyboardGetKeystroke();       // 0x24030 each frame: {vkey, flags} or NULL
-void ChameleonSetColour(int colour);      // 0x1F400
-void ChameleonSetFlash(int on);           // 0x1F380
 void Func20F20();                         // 0x20F20 state 15
 void Func20460();                         // 0x20460 state 5
-void ClockTick();                         // 0x12390 SNTP clock, after each frame
-void Tick1F610();                         // 0x1F610 after each frame
-void Tick1FE70();                         // 0x1FE70 after each frame
-void Tick21820();                         // 0x21820 after each frame

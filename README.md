@@ -16,15 +16,19 @@ the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Mi
 `Run` (the frame loop with its action and fade state machines), the sample-framework classes EvoX
 built in (font, XBG mesh, packed resources), the drawing helpers, the skin's text labels and
 variables, the logo, skin loading (`[Skin_<name>]` in evox.ini, else the built-in pictures), the
-menu class, the built-in main menu and the menu screen with its input, the menu actions
-(launching an XBE, reboot, power off), the settings screen with its keyboards, the drive
-letters, the BIOS, skin and trainer folder scans, and the `[Menu]` parser with its game folder
-scan (`AutoAddItem`). In xemu the start screen (background, logo, selection bar and main menu)
-matches the original's pixel for pixel outside the turning logo, with the built-in menu and with
-a `[Menu]`. What is called but not rebuilt yet (the other screens, the servers, the in-game
-reset, the live info) is in `include/evox/pending.h` and the stub classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log
-`pending: <name> (<original address>)` and return a neutral result. Source comments give each
-function's address in the original, so it can be checked against the disassembly.
+menu class, the built-in main menu and the menu screen with its input, the menu actions (launching
+an XBE, reboot, power off), the settings screen with its keyboards, the drive letters, the BIOS,
+skin and trainer folder scans, and the `[Menu]` parser with its game folder scan (`AutoAddItem`),
+and the per-frame tasks: the live information for the skin variables and the settings screen
+(clock text, free space, network, BIOS and kernel versions, temperatures, Chameleon), the DVD tray
+and disc check, memory units and the SNTP clock. In xemu the start screen (background, logo,
+selection bar and main menu) matches the original's pixel for pixel outside the turning logo, with
+the built-in menu and with a `[Menu]`, and every skin variable reads the same as in the original
+(`tools/make_info_test.py` makes a skin that shows them all). What is called but not rebuilt yet
+(the other screens, the servers, the in-game reset) is in `include/evox/pending.h` and the stub
+classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log `pending: <name> (<original
+address>)` and return a neutral result. Source comments give each function's address in the
+original, so it can be checked against the disassembly.
 
 The rebuild links RXDK's D3D8, D3DX8, XGraphics, XNet, XAPI and C runtime in place of the XDK ones
 that the original carried. The output XBE is not packed.

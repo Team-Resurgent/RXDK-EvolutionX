@@ -9,6 +9,7 @@
 #include "evox/dash.h"
 #include "evox/globals.h"
 #include "evox/inifile.h"
+#include "evox/info.h"
 #include "evox/pending.h"
 
 #define F32(bits) __builtin_bit_cast(float, (unsigned)(bits))
@@ -242,7 +243,7 @@ void CEvoxDash::InitItems()
     g_MenuBios.ResetSelection();
     g_MenuSkins.ResetSelection();
     g_MenuTrainers.ResetSelection();
-    Tick1F610();
+    InfoTick();
 }
 
 // 0x18320: the current menu with its selection bar, and its input: up / down (D-pad, arrow keys;
