@@ -41,16 +41,15 @@ void Tick21820() { PENDING_ONCE("Tick21820", 0x21820); }
 CDebugServer::CDebugServer() { memset(this, 0, sizeof *this); PENDING("CDebugServer::CDebugServer", 0x22FA0); }
 CFtpServer::CFtpServer() { memset(this, 0, sizeof *this); PENDING("CFtpServer::CFtpServer", 0x14D90); }
 
+void CEvoxDash::SaveTrainerOptions() { PENDING("CEvoxDash::SaveTrainerOptions", 0x1B380); }
 void CEvoxDash::SaveTrainerFile() { PENDING("CEvoxDash::SaveTrainerFile", 0x195E0); }
 void CEvoxDash::ScanBios(const char *dir) { Log("pending: CEvoxDash::ScanBios (0x19480) %s\n", dir); }
 void CEvoxDash::ScanSkins(const char *dir) { Log("pending: CEvoxDash::ScanSkins (0x1D440) %s\n", dir); }
 void CEvoxDash::ScanTrainers(const char *dir) { Log("pending: CEvoxDash::ScanTrainers (0x19750) %s\n", dir); }
 void CEvoxDash::PrepareMenuLine(char *) { PENDING("CEvoxDash::PrepareMenuLine", 0x199A0); }
 void CEvoxDash::ParseMenuSection(CMenu *) { PENDING("CEvoxDash::ParseMenuSection", 0x19B20); }
-void CEvoxDash::OpenSettings() { PENDING("CEvoxDash::OpenSettings", 0x1A150); }
 void CEvoxDash::OpenFileView(const char *) { PENDING("CEvoxDash::OpenFileView", 0x1B130); }
 void CEvoxDash::OpenItem() { PENDING("CEvoxDash::OpenItem", 0x1CAC0); }
 void CEvoxDash::DrawPass187B0() { PENDING_ONCE("CEvoxDash::DrawPass187B0", 0x187B0); }
-void CEvoxDash::DrawSettings() { PENDING_ONCE("CEvoxDash::DrawSettings", 0x1B820); }
 void CEvoxDash::DrawPass18D10() { PENDING_ONCE("CEvoxDash::DrawPass18D10", 0x18D10); }
 void CEvoxDash::DrawMessage() { PENDING_ONCE("CEvoxDash::DrawMessage", 0x18E30); }

@@ -61,19 +61,22 @@ public:
     void LoadLabels();                                // 0x1C890
     void InitItems();                                 // 0x1D680
     void DrawMenu();                                  // 0x18320 (m_drawMenu)
+    void OpenSettings();                              // 0x1A150 action 9
+    void SaveSettings();                              // 0x1B440 "Save And Exit"
+    void DrawSettings();                              // 0x1B820 (m_drawSettings)
+    void KeyboardInput();                             // (part of DrawSettings)
 
     // not rebuilt yet (src/pending.cpp)
+    void SaveTrainerOptions();                        // 0x1B380 the trainer options screen
     void SaveTrainerFile();                           // 0x195E0 E:\TDATA\EVOX\Evox.etf
     void ScanBios(const char *dir);                   // 0x19480 the BIOS menu
     void ScanSkins(const char *dir);                  // 0x1D440 the skin menu
     void ScanTrainers(const char *dir);               // 0x19750 the trainer menu
     void PrepareMenuLine(char *line);                 // 0x199A0
     void ParseMenuSection(CMenu *menu);               // 0x19B20 a [Menu] section block
-    void OpenSettings();                              // 0x1A150 action 9
     void OpenFileView(const char *path);              // 0x1B130 action 34
     void OpenItem();                                  // 0x1CAC0 actions 200..299
     void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
-    void DrawSettings();                              // 0x1B820 (m_drawSettings)
     void DrawPass18D10();                             // 0x18D10 (m_drawE98)
     void DrawMessage();                               // 0x18E30 (m_drawMessage)
 
@@ -158,7 +161,10 @@ public:
     DWORD m_menuColour[3];           // +0x1500 [skin] MenuColor1..3
     BYTE unk150C[0x1911 - 0x150C];
     bool m_1911;
-    BYTE unk1912[0x1920 - 0x1912];
+    BYTE pad1912[2];
+    const WCHAR *m_screenTitle;      // +0x1914 the settings screen's title when m_1911 is false
+    void *m_trainer;                 // +0x1918 trainer shown in the settings screen
+    int m_trainerOptions;            // +0x191C
     const BYTE *m_keystroke;         // +0x1920 last keyboard keystroke, or NULL
     BYTE m_key;                      // +0x1924 its virtual key (8 backspace, 0x2A print screen)
     BYTE m_keyFlags;                 // +0x1925
@@ -166,7 +172,8 @@ public:
     int m_keyboard;                  // +0x1928
     int m_192C;
     DWORD m_ledFlags;                // +0x1930 Chameleon LED commands
-    BYTE unk1934[0x193C - 0x1934];
+    int *m_gameRegionChoice;         // +0x1934 the Game Region row's choice (OpenSettings)
+    int *m_tsrChoice;                // +0x1938 the TSR row's choice
     bool m_InstallIgr;               // +0x193C leave Run and run the IGR steps
     BYTE pad193D[3];
 };

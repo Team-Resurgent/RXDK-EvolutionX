@@ -30,6 +30,8 @@ static_assert(offsetof(CEvoxDash, m_barColor1) == 0x14F4, "m_barColor1");
 static_assert(offsetof(CEvoxDash, m_menuColour) == 0x1500, "m_menuColour");
 static_assert(offsetof(CEvoxDash, m_keystroke) == 0x1920, "m_keystroke");
 static_assert(offsetof(CEvoxDash, m_InstallIgr) == 0x193C, "m_InstallIgr");
+static_assert(offsetof(CEvoxDash, m_screenTitle) == 0x1914, "m_screenTitle");
+static_assert(offsetof(CEvoxDash, m_gameRegionChoice) == 0x1934, "m_gameRegionChoice");
 static_assert(sizeof(CEvoxDash) == 0x1940, "CEvoxDash");
 static_assert(sizeof(CDebugServer) == 0x41E, "CDebugServer");
 static_assert(sizeof(CFtpServer) == 0x5E0, "CFtpServer");

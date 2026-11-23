@@ -35,3 +35,5 @@ extern BYTE g_Unknown95D64;          // 0x95D64 (1) cleared by items with flag 0
 extern int g_Unknown57E5BC;          // 0x57E5BC state 14 waits for 0
 extern bool g_Unknown57E5C0;         // 0x57E5C0 a message for the screen is in g_Unknown47CFE0
 extern char g_Unknown47CFE0[0x100];  // 0x47CFE0
+extern bool g_HasFDrive;             // 0x58FB01 F: is set up (InitHardDisk)
+extern bool g_HasGDrive;             // 0x590538 G: is set up (InitHardDisk)

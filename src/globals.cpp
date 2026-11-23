@@ -34,3 +34,5 @@ BYTE g_Unknown95D64 = 1;
 int g_Unknown57E5BC;
 bool g_Unknown57E5C0;
 char g_Unknown47CFE0[0x100];
+bool g_HasFDrive;
+bool g_HasGDrive;
