@@ -4,10 +4,16 @@ The EvolutionX dashboard (build 3935) rebuilt as source on the open RXDK SDK.
 
 ## Status
 
-Early. The project builds a placeholder XBE with the original's header and certificate (title id
-0x586F7645 "RemoteX", init flags 0xC, 64 KB stack); EvoX's code is being rebuilt function by
-function from the original. See [docs/layout.md](docs/layout.md) for what is EvoX's own code and
-what comes from RXDK's libraries.
+Early. EvoX's code is being rebuilt function by function from the original; the XBE keeps the
+original's header and certificate (title id 0x586F7645 "RemoteX", init flags 0xC, 64 KB stack).
+See [docs/layout.md](docs/layout.md) for what is EvoX's own code and what comes from RXDK's
+libraries.
+
+Rebuilt so far: `main` (start-up, Q: mapping, evox.ini settings, MS-dashboard hand-off, network
+config and start-up), the evox.ini reader/writer (`CIniFile`) and the debug log. What `main` calls
+but is not rebuilt yet is in `include/evox/pending.h`: stubs in `src/pending.cpp` log
+`pending: <name> (<original address>)` and return a neutral result. Source comments give each
+function's address in the original, so it can be checked against the disassembly.
 
 The rebuild links RXDK's D3D8, D3DX8, XGraphics, XNet, XAPI and C runtime in place of the XDK ones
 that the original carried. The output XBE is not packed.
@@ -44,3 +50,7 @@ rea/decomp --provider ghidra` then writes Ghidra pseudocode for every function.
 
 `tools/xemu_shot.py out.png` saves xemu's framebuffer as PNG (start xemu with
 `-monitor tcp:127.0.0.1:45454,server,nowait`).
+
+`EXTRA_CFLAGS=-DEVOX_UART_LOG ./build.sh` also writes the debug log to the COM1 UART, which xemu
+shows with `-device lpc47m157 -serial stdio` (or `-serial file:<path>`). `tools/disasm.py <addr>`
+disassembles one function of the original with strings and kernel imports named.

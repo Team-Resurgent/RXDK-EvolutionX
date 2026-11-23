@@ -35,7 +35,8 @@ rm -f "$OUT/evoxdash.exe" "$OUT/evoxdash.xbe"
 CFLAGS_C=() CFLAGS_CXX=()
 while IFS= read -r f; do CFLAGS_C+=("$f"); done < <("$CLI" compile-args --lang c | tr -d '\r')
 while IFS= read -r f; do CFLAGS_CXX+=("$f"); done < <("$CLI" compile-args --lang c++ | tr -d '\r')
-OURS="${EXTRA_CFLAGS:-} -O2 -Wall -Wno-pragma-pack -Iinclude" # (the SDK headers trip -Wpragma-pack)
+# (the SDK headers trip -Wpragma-pack; sparse tables use C99 array designators on purpose)
+OURS="${EXTRA_CFLAGS:-} -O2 -Wall -Wno-pragma-pack -Wno-c99-designator -Iinclude"
 
 OBJS=()
 while IFS= read -r src; do
