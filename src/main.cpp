@@ -9,6 +9,7 @@
 #include "evox/log.h"
 #include "evox/netcfg.h"
 #include "evox/pending.h"
+#include "evox/telnet.h"
 
 // in the SDK's libxapi, not declared in its headers (the 5455 XAPI routine had a sixth "use the
 // D: path" flag after pszDDrivePath; EvoX always passed 1 with a path)
