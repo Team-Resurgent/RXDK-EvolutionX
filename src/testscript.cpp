@@ -10,11 +10,29 @@
 
 struct TestStep {
     DWORD frame;
-    char op;          // 'A' action, 'B' analog button, 'D' digital button, 'K' typed key, 'L' log, 'F' dump file
+    char op;          // 'A' action, 'B' analog button, 'D' digital button, 'K' typed key, 'L' log,
+                      // 'F' dump file, 'M' dump the menus
     int arg;
     const char *text;
 };
 #include EVOX_TEST_SCRIPT // static const TestStep g_TestScript[]
+
+// one line per item: selectable, colour, action, text, path (a trainer's file), flags, submenus
+static void DumpMenu(const char *name, CMenu *menu, int depth)
+{
+    if (depth == 0)
+        Log("menu %s: %d items\n", name, menu->count);
+    for (CMenuItem *it = menu->first; it; it = it->next) {
+        const char *path = it->path;
+        if (it->action == 34 && path)
+            path = ((TrainerFile *)path)->path;
+        Log("%*s%d %06x %3d \"%ls\" %s %x/%x%s%s\n", depth * 2 + 2, "", it->selectable, it->colour, it->action,
+            it->text, path ? path : "-", it->m_20, it->flags, it->trainer ? " trainer " : "",
+            it->trainer ? it->trainer : "");
+        if (it->submenu)
+            DumpMenu(name, it->submenu, depth + 1);
+    }
+}
 
 void CEvoxDash::RunTestScript()
 {
@@ -53,6 +71,13 @@ void CEvoxDash::RunTestScript()
             Log("test %u: --- end ---\n", m_frame);
             break;
         }
+        case 'M':
+            DumpMenu("main", &g_MenuMain, 0);
+            DumpMenu("bios", &g_MenuBios, 0);
+            DumpMenu("skins", &g_MenuSkins, 0);
+            DumpMenu("trainers", &g_MenuTrainers, 0);
+            Log("test %u: --- menus end ---\n", m_frame);
+            break;
         }
     }
 }

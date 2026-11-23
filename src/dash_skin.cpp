@@ -14,9 +14,6 @@
 #define F32(bits) __builtin_bit_cast(float, (unsigned)(bits))
 
 static char g_SkinSection[0x100];     // 0x3D8070 "Skin_<name>"
-static char g_MenuLine[0x600];        // 0x3D7A70 a [Menu] line being parsed
-static BYTE g_Unknown3F9C48[0x80000]; // 0x3F9C48 cleared by InitItems
-static volatile int g_Unknown47BC48;  // 0x47BC48
 static int g_MenuRepeat;              // 0x47BD14 frames until the selection moves again
 
 struct SkinVertex { // pre-transformed, texture coordinates in texels (linear textures)
@@ -201,8 +198,8 @@ void CEvoxDash::LoadSkin(const char *name)
 // menu comes from evox.ini [Menu], or is the built-in one.
 void CEvoxDash::InitItems()
 {
-    memset(g_Unknown3F9C48, 0, sizeof g_Unknown3F9C48);
-    g_Unknown47BC48 = 0;
+    memset(g_ItemPaths, 0, sizeof g_ItemPaths);
+    g_ItemPathCount = 0;
     g_MenuDepth = 0;
     ScanBios("q:\\bios");
     ScanSkins("q:\\skin");
@@ -225,14 +222,14 @@ void CEvoxDash::InitItems()
             }
         }
     } else {
-        if (g_Menu47BCA8.count) // BIOS images found
-            g_Menu47BCA8.AddItem(0, 1, -1, L"", nullptr);
+        if (g_MenuBios.count) // BIOS images found
+            g_MenuBios.AddItem(0, 1, -1, L"", nullptr);
         g_MenuMain.AddItem(1, 1, 3, L"MS Dashboard", nullptr);
         g_MenuMain.AddItem(1, 1, 5, L"Reboot", nullptr);
         g_MenuMain.AddItem(1, 1, 10, L"Power Off", nullptr);
         g_MenuMain.AddItem(1, 1, 9, L"Settings", nullptr);
         g_MenuMain.AddItem(1, 1, 11, L"Backup", nullptr);
-        if (g_Menu47BCA8.count)
+        if (g_MenuBios.count)
             g_MenuMain.AddItem(1, 1, 1, L"Flash BIOS", nullptr);
     }
     g_MenuMain.AddItem(0, 1, -1, L"", nullptr); // the end marker
@@ -242,9 +239,9 @@ void CEvoxDash::InitItems()
 
     g_MenuMain.ResetSelection();
     g_Menu47BC60.ResetSelection();
-    g_Menu47BCA8.ResetSelection();
-    g_Menu47BCF0.ResetSelection();
-    g_Menu47BCCC.ResetSelection();
+    g_MenuBios.ResetSelection();
+    g_MenuSkins.ResetSelection();
+    g_MenuTrainers.ResetSelection();
     Tick1F610();
 }
 

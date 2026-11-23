@@ -21,7 +21,7 @@
 
 DWORD g_ChameleonBlink = 1;
 int g_DiscType = 3;
-CMenu g_MenuMain, g_Menu47BC60, g_Menu47BCA8, g_Menu47BCCC, g_Menu47BCF0;
+CMenu g_MenuMain, g_Menu47BC60, g_MenuBios, g_MenuTrainers, g_MenuSkins;
 CMenu *g_MenuStack[0x102];
 int g_MenuDepth;
 int g_SelectedItem;
@@ -189,7 +189,7 @@ void CEvoxDash::Run()
             goto action_done;
         case 1:
             m_state = 8;
-            m_nextMenu = &g_Menu47BCA8;
+            m_nextMenu = &g_MenuBios;
             break;
         case 2: {
             m_state = 22;
@@ -275,7 +275,7 @@ void CEvoxDash::Run()
             break;
         case 13:
             m_state = 8;
-            m_nextMenu = &g_Menu47BCF0;
+            m_nextMenu = &g_MenuSkins;
             break;
         case 14: // launch what is in the drive
             m_action = 0;
@@ -311,7 +311,7 @@ void CEvoxDash::Run()
             return;
         case 33:
             m_state = 8;
-            m_nextMenu = &g_Menu47BCCC;
+            m_nextMenu = &g_MenuTrainers;
             break;
         case 34:
             m_state = 25;

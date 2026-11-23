@@ -65,6 +65,15 @@ public:
     void SaveSettings();                              // 0x1B440 "Save And Exit"
     void DrawSettings();                              // 0x1B820 (m_drawSettings)
     void KeyboardInput();                             // (part of DrawSettings)
+    // the menus from folders and [Menu] (src/dash_menus.cpp)
+    void ScanBios(const char *dir);                   // 0x19480 the BIOS menu
+    void ScanSkins(const char *dir);                  // 0x1D440 the skin menu
+    void ScanTrainers(const char *dir);               // 0x19750 the trainer menu
+    void PrepareMenuLine(char *line);                 // 0x199A0
+    bool Tokenize(char *line);                        // 0x199E0 into m_argc / m_argv
+    void ParseMenuSection(CMenu *menu);               // 0x19B20 a [Menu] section block
+    void AutoAddItem(CMenu *menu, char *dir, int depth); // 0x191B0 the games in a folder
+    const WCHAR *GetXbeTitle(const char *path);       // 0x18DC0
 #ifdef EVOX_TEST_SCRIPT
     void RunTestScript();                             // test builds: src/testscript.cpp
 #endif
@@ -72,11 +81,6 @@ public:
     // not rebuilt yet (src/pending.cpp)
     void SaveTrainerOptions();                        // 0x1B380 the trainer options screen
     void SaveTrainerFile();                           // 0x195E0 E:\TDATA\EVOX\Evox.etf
-    void ScanBios(const char *dir);                   // 0x19480 the BIOS menu
-    void ScanSkins(const char *dir);                  // 0x1D440 the skin menu
-    void ScanTrainers(const char *dir);               // 0x19750 the trainer menu
-    void PrepareMenuLine(char *line);                 // 0x199A0
-    void ParseMenuSection(CMenu *menu);               // 0x19B20 a [Menu] section block
     void OpenFileView(const char *path);              // 0x1B130 action 34
     void OpenItem();                                  // 0x1CAC0 actions 200..299
     void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
@@ -162,7 +166,9 @@ public:
     DWORD m_barColor2;               // +0x14F8 [skin] BarColor2: its outline
     float m_barAlpha;                // +0x14FC [skin] BarAlpha
     DWORD m_menuColour[3];           // +0x1500 [skin] MenuColor1..3
-    BYTE unk150C[0x1911 - 0x150C];
+    int m_argc;                      // +0x150C Tokenize: the words of the last line
+    char *m_argv[0x100];             // +0x1510 (unused ones point at g_EmptyArg)
+    bool m_noTrainers;               // +0x1910 ScanTrainers found none
     bool m_1911;
     BYTE pad1912[2];
     const WCHAR *m_screenTitle;      // +0x1914 the settings screen's title when m_1911 is false
@@ -188,7 +194,20 @@ extern int g_Shade;                      // 0x47BC54 screen-saver shade, 0..g_Sh
 extern DWORD g_ChameleonBlink;           // 0x94B58
 extern int g_DiscType;                   // 0x95BBC 0 video DVD, 1 audio CD, 2/4 game
 extern CMenu g_MenuMain;                 // 0x47BC84
-extern CMenu g_Menu47BC60, g_Menu47BCA8, g_Menu47BCCC, g_Menu47BCF0;
+extern CMenu g_Menu47BC60;
+extern CMenu g_MenuBios;                 // 0x47BCA8 q:\bios (action 2 flashes the file)
+extern CMenu g_MenuTrainers;             // 0x47BCCC q:\trainers\*.etm (action 34)
+extern CMenu g_MenuSkins;                // 0x47BCF0 q:\skin\<name>\skin.ini (action 12)
+extern char g_EmptyArg[0x100];           // 0x3D84B8 m_argv past m_argc (cleared by Create)
+
+// a trainer file read by ScanTrainers: the trainer menu item's path points at this
+struct TrainerFile {                     // 0x204 bytes
+    char path[0x200];
+    BYTE *data;                          // the whole .etm file
+};
 extern CMenu *g_MenuStack[0x102];        // 0x3F9538
 extern int g_MenuDepth;                  // 0x3F9940
+extern char g_MenuLine[0x600];           // 0x3D7A70 the [Menu] line being parsed
+extern char g_ItemPaths[0x800][0x100];   // 0x3F9C48 XBEs [Menu] items name (AutoAddItem skips them)
+extern int g_ItemPathCount;              // 0x47BC48
 extern int g_SelectedItem;               // 0x57D3E0

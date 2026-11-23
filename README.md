@@ -17,12 +17,12 @@ the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Mi
 built in (font, XBG mesh, packed resources), the drawing helpers, the skin's text labels and
 variables, the logo, skin loading (`[Skin_<name>]` in evox.ini, else the built-in pictures), the
 menu class, the built-in main menu and the menu screen with its input, the menu actions
-(launching an XBE, reboot, power off), the settings screen with its keyboards, and the drive
-letters. In xemu the start screen (background, logo, selection bar and main menu) matches the
-original's pixel for pixel outside the turning logo. What is called but not rebuilt yet (the
-other screens, the servers, the folder scans, the `[Menu]` parser, the in-game reset, the live
-info) is in `include/evox/pending.h` and
-the stub classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log
+(launching an XBE, reboot, power off), the settings screen with its keyboards, the drive
+letters, the BIOS, skin and trainer folder scans, and the `[Menu]` parser with its game folder
+scan (`AutoAddItem`). In xemu the start screen (background, logo, selection bar and main menu)
+matches the original's pixel for pixel outside the turning logo, with the built-in menu and with
+a `[Menu]`. What is called but not rebuilt yet (the other screens, the servers, the in-game
+reset, the live info) is in `include/evox/pending.h` and the stub classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log
 `pending: <name> (<original address>)` and return a neutral result. Source comments give each
 function's address in the original, so it can be checked against the disassembly.
 
@@ -83,6 +83,18 @@ prints the saved `evox.ini` to the log:
 ```bash
 python tools/gen_test_script.py tests/settings.txt work/test/settings.h
 EXTRA_CFLAGS='-DEVOX_UART_LOG -DEVOX_TEST_SCRIPT="../work/test/settings.h" -DEVOX_TEST_INI' ./build.sh
+```
+
+`tests/menus.txt` logs every menu (main with its submenus, BIOS, skins, trainers). Run it from a
+folder made by `tools/make_menu_test.py`, whose evox.ini has a `[Menu]` using each keyword, with
+BIOS files, skins, a trainer and game folders; xemu's `-xbe-path` serves that folder as Q:, so the
+original can be run from a copy of it for comparison:
+
+```bash
+python tools/gen_test_script.py tests/menus.txt work/test/menus.h
+EXTRA_CFLAGS='-DEVOX_UART_LOG -DEVOX_TEST_SCRIPT="../work/test/menus.h"' RX_OUT=out/test ./build.sh
+python tools/make_menu_test.py work/menutest/rebuild out/test/evoxdash.xbe out/evoxdash.xbe
+python tools/make_menu_test.py work/menutest/orig evoxdash.xbe out/evoxdash.xbe
 ```
 
 `tools/gen_test_script.py` lists the script commands. `EVOX_TEST_INI` loads and saves

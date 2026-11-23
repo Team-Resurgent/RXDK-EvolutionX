@@ -28,6 +28,8 @@ static_assert(offsetof(CEvoxDash, m_autoLaunchGames) == 0x14EE, "m_autoLaunchGam
 static_assert(offsetof(CEvoxDash, m_itemsFile) == 0x10DC, "m_itemsFile");
 static_assert(offsetof(CEvoxDash, m_barColor1) == 0x14F4, "m_barColor1");
 static_assert(offsetof(CEvoxDash, m_menuColour) == 0x1500, "m_menuColour");
+static_assert(offsetof(CEvoxDash, m_argc) == 0x150C, "m_argc");
+static_assert(offsetof(CEvoxDash, m_noTrainers) == 0x1910, "m_noTrainers");
 static_assert(offsetof(CEvoxDash, m_keystroke) == 0x1920, "m_keystroke");
 static_assert(offsetof(CEvoxDash, m_InstallIgr) == 0x193C, "m_InstallIgr");
 static_assert(offsetof(CEvoxDash, m_screenTitle) == 0x1914, "m_screenTitle");
@@ -42,7 +44,7 @@ static_assert(D3DFMT_LIN_A8R8G8B8 == 0x12, "D3DFMT_LIN_A8R8G8B8");
 IDirect3DDevice8 *g_pd3dDevice;
 CDebugServer *g_DebugServer;
 int g_Shade;
-static BYTE g_Unknown3D84B8[0x100]; // 0x3D84B8 cleared by Create
+char g_EmptyArg[0x100]; // 0x3D84B8 cleared by Create
 
 XBRESOURCE g_ResourceTags[] = {{"xray1.bmp", 0x28}, {"xray2.bmp", 0x3C}, {nullptr, 0}};
 
@@ -82,7 +84,7 @@ CEvoxDash::~CEvoxDash() {}
 
 HRESULT CEvoxDash::Create()
 {
-    memset(g_Unknown3D84B8, 0, sizeof g_Unknown3D84B8);
+    memset(g_EmptyArg, 0, sizeof g_EmptyArg);
     if (!g_ResourceXprSize)
         Log("dash\t: built without EvoX's graphics (no evoxdash.xbe at build time)\n\r");
 

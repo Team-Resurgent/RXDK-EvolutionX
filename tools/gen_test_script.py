@@ -12,6 +12,7 @@
 #   type <c>              a typed character (keyboard)
 #   log <text>            a line in the log
 #   dump <path>           the file's contents in the log
+#   menus                 the main, BIOS, skin and trainer menus in the log
 import re, sys
 
 ANALOG = {'a': 0, 'b': 1, 'x': 2, 'y': 3, 'black': 4, 'white': 5, 'left_trigger': 6, 'right_trigger': 7}
@@ -45,6 +46,8 @@ for n, line in enumerate(open(sys.argv[1]), 1):
             steps.append((f, 'K', ord(rest.strip()[0]), None))
         elif name == 'log':
             steps.append((f, 'L', 0, rest))
+        elif name == 'menus':
+            steps.append((f, 'M', 0, None))
         elif name == 'dump':
             steps.append((f, 'F', 0, rest.strip()))
         else:
