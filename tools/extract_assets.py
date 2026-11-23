@@ -11,7 +11,7 @@ DATA_VA, DATA_RAW = 0x836E0, 0x75000  # .data of the unpacked image (raw offset 
 
 # (symbol, address, size, magic, what)
 ASSETS = [
-    ('g_EmbeddedXpr', 0x83750, 0x11000, b'XPR0', 'XPR with 2 resources (CEmbeddedResource)'),
+    ('g_FontXpr', 0x83750, 0x11000, b'XPR0', 'XPR with the font texture and glyphs (CXBFont)'),
     ('g_ResourceXpr', 0xCF240, 0x26E000, b'XPR0', 'XPR with 4 resources (CXBPackedResource)'),
     ('g_LogoMesh', 0x33D240, 0x96F00, b'XBG\x02', 'XBG mesh (CXBMesh)'),
 ]

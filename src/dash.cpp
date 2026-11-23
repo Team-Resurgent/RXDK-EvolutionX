@@ -15,7 +15,7 @@
 static_assert(offsetof(CEvoxDash, m_d3dpp) == 0x004, "m_d3dpp");
 static_assert(offsetof(CEvoxDash, m_InputDeviceTypes) == 0x09C, "m_InputDeviceTypes");
 static_assert(offsetof(CEvoxDash, m_DefaultGamepad) == 0x0A8, "m_DefaultGamepad");
-static_assert(offsetof(CEvoxDash, m_embedded) == 0x184, "m_embedded");
+static_assert(offsetof(CEvoxDash, m_font) == 0x184, "m_font");
 static_assert(offsetof(CEvoxDash, m_xpr) == 0x1D4, "m_xpr");
 static_assert(offsetof(CEvoxDash, m_mesh) == 0x200, "m_mesh");
 static_assert(offsetof(CEvoxDash, m_action) == 0x280, "m_action");
@@ -66,13 +66,13 @@ CEvoxDash::CEvoxDash()
         m_d3dpp.Flags = D3DPRESENTFLAG_WIDESCREEN;
     m_dwNumInputDeviceTypes = 0;
     m_InputDeviceTypes = nullptr;
-    m_264 = 1;
+    m_drawLogo = true;
     // Not set by the original constructor (Run sets it), but main reads it when Create fails:
     // there it was stack garbage. False here.
     m_InstallIgr = false;
 }
 
-// members m_xpr and m_embedded are destroyed after this, as in the original
+// members m_xpr and m_font are destroyed after this, as in the original
 CEvoxDash::~CEvoxDash() {}
 
 HRESULT CEvoxDash::Create()
@@ -107,7 +107,7 @@ HRESULT CEvoxDash::Create()
     // EvoX's own initialisation
     if (InitDevices23D70() < 0 || InitDevices23F70() < 0)
         return E_FAIL;
-    if (m_embedded.Create(m_pd3dDevice, 0) < 0)
+    if (m_font.Create(m_pd3dDevice, 0) < 0)
         return 1;
     // the last title's screen (D3DDevice_PersistDisplay), copied to fade it out in Render
     m_hasPersisted = FALSE;
@@ -142,9 +142,9 @@ HRESULT CEvoxDash::Create()
         m_ftp = new CFtpServer;
         Log("dash\t: OK\n\r");
     }
-    m_1E4 = 0;
+    m_bgTexture = nullptr;
     m_fadeTexture = nullptr;
-    m_14F0 = 0;
+    m_labels = nullptr;
     InitItems();
 
     g_Ini->Lock();
@@ -164,9 +164,9 @@ HRESULT CEvoxDash::Create()
 void CEvoxDash::Destroy()
 {
     ReleaseSkin();
-    if (m_1E8) {
-        D3DResource_Release((D3DResource *)m_1E8);
-        m_1E8 = nullptr;
+    if (m_bgVB) {
+        D3DResource_Release((D3DResource *)m_bgVB);
+        m_bgVB = nullptr;
     }
     if (m_pd3dDevice) {
         D3DDevice_Release();
@@ -184,8 +184,8 @@ void CEvoxDash::Render()
 {
     D3DDevice_Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0, 1.0f, 0);
     DrawBackground();
-    DrawPass17CD0();
-    DrawPass1CA50();
+    DrawLogo();
+    DrawLabels();
     if (m_drawMenu)
         DrawMenu();
     if (m_drawE8D)

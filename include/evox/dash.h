@@ -5,30 +5,19 @@
 // original; names say what the code does with them, "m_<offset>" where that is not known yet.
 #pragma once
 #include <xtl.h>
+#include "evox/xbfont.h"
 #include "evox/xbinput.h"
+#include "evox/xbmesh.h"
+#include "evox/xbresource.h"
 
 // ---- not rebuilt yet (src/pending.cpp) -----------------------------------------------------
-class CEmbeddedResource { // 0x50 bytes; resources from an XPR inside the XBE (0x83750)
-public:
-    CEmbeddedResource();                                 // 0x25200
-    ~CEmbeddedResource();                                // 0x256B0
-    HRESULT Create(IDirect3DDevice8 *dev, DWORD unused); // 0x25250
-    BYTE raw[0x50];
-};
-
-class CXBPackedResource { // 0x10 bytes; the sample framework's packed-resource loader
-public:
-    CXBPackedResource();  // 0x26110
-    ~CXBPackedResource(); // 0x26280
-    HRESULT Create(IDirect3DDevice8 *dev, const void *xpr, DWORD count, void *tags); // 0x26180
-    BYTE raw[0x10];
-};
-
-class CXBMesh { // 0x18 bytes; the sample framework's XBG mesh (EvoX's logo model)
-public:
-    CXBMesh();                                                                     // 0x25BB0
-    HRESULT Create(IDirect3DDevice8 *dev, const void *xbg, CXBPackedResource *res); // 0x25C80
-    BYTE raw[0x18];
+struct SkinLabel {          // 0x418 bytes, a text label of the skin
+    float alpha;            // +0x000 0..1
+    float x, y;             // +0x004
+    DWORD rgb;              // +0x00C
+    DWORD flags;            // +0x010 XBFONT_*
+    WCHAR text[0x200];      // +0x014 with <variables>
+    SkinLabel *next;        // +0x414
 };
 
 struct CMenuItem {          // (partial)
@@ -77,6 +66,11 @@ public:
 
     // rebuilt
     void Render();        // 0x1D130
+    void DrawBackground(); // 0x18010
+    void DrawLogo();      // 0x17CD0
+    void DrawLabels();    // 0x1CA50
+    void DrawQuad(IDirect3DTexture8 *tex, float alpha, void *verts);                     // 0x17450
+    void DrawRect(float left, float top, float right, float bottom, DWORD fill, DWORD border); // 0x18140
 
     // not rebuilt yet (src/pending.cpp)
     void InitItems();                                 // 0x1D680 paths, items.txt
@@ -85,16 +79,11 @@ public:
     void OpenSettings();                              // 0x1A150 action 9
     void OpenFileView(const char *path);              // 0x1B130 action 34
     void OpenItem();                                  // 0x1CAC0 actions 200..299
-    void DrawBackground();                            // 0x18010
-    void DrawPass17CD0();                             // 0x17CD0
-    void DrawPass1CA50();                             // 0x1CA50
     void DrawMenu();                                  // 0x18320 (m_drawMenu)
     void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
     void DrawSettings();                              // 0x1B820 (m_drawSettings)
     void DrawPass18D10();                             // 0x18D10 (m_drawE98)
     void DrawMessage();                               // 0x18E30 (m_drawMessage)
-    void DrawQuad(IDirect3DTexture8 *tex, float alpha, void *verts);       // 0x17450
-    void DrawRect(float x, float y, float w, float h, DWORD c1, DWORD c2); // 0x18140
 
     D3DPRESENT_PARAMETERS m_d3dpp;   // +0x004
     IDirect3D8 *m_pD3D;              // +0x048
@@ -112,10 +101,10 @@ public:
     DWORD m_dwNumInputDeviceTypes;   // +0x0A0
     XBGAMEPAD *m_Gamepad;            // +0x0A4
     XBGAMEPAD m_DefaultGamepad;      // +0x0A8 all gamepads merged
-    CEmbeddedResource m_embedded;    // +0x184
+    CXBFont m_font;                  // +0x184
     CXBPackedResource m_xpr;         // +0x1D4
-    DWORD m_1E4;
-    IDirect3DResource8 *m_1E8;       // +0x1E8 released by Destroy
+    IDirect3DTexture8 *m_bgTexture;  // +0x1E4 the skin's background
+    IDirect3DVertexBuffer8 *m_bgVB;  // +0x1E8 its quad
     IDirect3DTexture8 *m_fadeTexture; // +0x1EC drawn in state 1
     DWORD m_1F0;
     BOOL m_hasPersisted;             // +0x1F4 the last title's screen is shown and faded out
@@ -123,9 +112,9 @@ public:
     IDirect3DTexture8 *m_persistTexture; // +0x1FC
     CXBMesh *m_mesh;                 // +0x200
     BYTE m_fadeVerts[0x60];          // +0x204 vertices for the state-1 quad
-    BYTE m_264;
+    bool m_drawLogo;                 // +0x264
     BYTE pad265[3];
-    int m_268;
+    int m_labelAlpha;                // +0x268 0..255
     float m_persistAlpha;            // +0x26C
     int m_270;
     bool m_drawMenu;                 // +0x274
@@ -161,14 +150,14 @@ public:
     int m_10D4;
     BYTE unk10D8[0x10E4 - 0x10D8];
     float m_fadeAlpha;               // +0x10E4 state 1: fade out before leaving Run
-    BYTE unk10E8[4];
+    int m_logoType;                  // +0x10E8 [skin] LogoType, 0..4
     bool m_autoLaunchDvd;            // +0x10EC [Misc] AutoLaunchDVD
     char m_dvdPlayer[0x200];         // +0x10ED [Misc] DVDPlayer
     bool m_autoLaunchAudio;          // +0x12ED [Misc] AutoLaunchAudio
     char m_audioPlayer[0x200];       // +0x12EE [Misc] AudioPlayer
     bool m_autoLaunchGames;          // +0x14EE [Misc] AutoLaunchGames
     BYTE pad14EF;
-    DWORD m_14F0;
+    struct SkinLabel *m_labels;      // +0x14F0 the skin's text labels
     BYTE unk14F4[0x1911 - 0x14F4];
     bool m_1911;
     BYTE unk1912[0x1920 - 0x1912];

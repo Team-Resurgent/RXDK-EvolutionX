@@ -14,12 +14,14 @@ Header: XDK 5455, title id 586F7645 "RemoteX", init flags 0xC, entry 0x29F53, ke
 | Range | What | Rebuild? |
 |---|---|---|
 | 0x11000..0x24E2F | EvoX itself: FTP/telnet commands, network setup, SNTP clock, skins, trainers, BIOS/HDD backup and flash, launching, `q:\evox.ini`; the dashboard object (its `Create` 0x1D920 is the sample framework's `CXBApplication::Create` with EvoX's set-up folded in). `main` = 0x24220 (to 0x24DA6) | yes, as C/C++ |
-| 0x24E30..0x2628F | EvoX's menu/list class (0x24E30.., `GetItem` 0x24E90), its embedded-resource class (0x25200..0x256B0, XPR at 0x83750), font class (0x18 bytes: 0x25BB0, `Create` 0x25C80) and the framework's packed-resource loader (0x26110..0x26280, XPR0 check 0x26180) | yes |
+| 0x24E30..0x251FF | EvoX's menu/list class (0x24E30.., `GetItem` 0x24E90) | yes |
+| 0x25200..0x2628F | sample framework, loading from memory: `CXBFont` (0x25200..0x25B9E, font XPR 0x83750), `CXBMesh` (0x25BB0..0x260BB, XBG 0x33D240), `CXBPackedResource` (0x260C0..0x26280) | rebuilt: `src/xbfont.cpp`, `src/xbmesh.cpp`, `src/xbresource.cpp` |
 | 0x26290..0x26488 | a socket wrapper class over XNet | yes |
 | 0x26490..0x26A31 | the sample framework's `xbinput.cpp` (`XBInput_CreateGamepads`, `XBInput_RefreshDeviceList`, `XBInput_GetInput`) | rebuilt: `src/xbinput.cpp` |
-| 0x26A40..0x35ACC | C runtime (LIBCMT), XAPI (title meta, `t:\$u`, partitions; XapiTitleStartup at the entry), XKBDD keyboard driver, CRT math/printf | no: RXDK libc / libxapi / xkbd |
+| 0x26A40..0x26A80 | `XBUtil_InitMaterial` (xbutil.cpp) | rebuilt: `src/xbutil.cpp` |
+| 0x26A81..0x35ACC | C runtime (LIBCMT), XAPI (title meta, `t:\$u`, partitions; XapiTitleStartup at the entry), XKBDD keyboard driver, CRT math/printf | no: RXDK libc / libxapi / xkbd |
 
-`docs/functions.md` (`tools/funcmap.py`) lists EvoX's 237 functions (81.5 KB): size, callers,
+`docs/functions.md` (`tools/funcmap.py`) lists EvoX's 238 functions (81.6 KB): size, callers,
 callees and the strings each one uses.
 
 Start-up: entry 0x29F53 (XAPI) creates the main thread at 0x29EDF, which runs the CRT initializers
@@ -39,7 +41,6 @@ Start-up: entry 0x29F53 (XAPI) creates the main thread at 0x29EDF, which runs th
 | _text | 0x5958A0..0x59641D | 7 functions: in-game reset / ELL support | yes |
 | text | 0x596420..0x596919 | ELL loader (`tdata\evox\evox.ell`) | yes |
 
-The XPR at 0x83750 is the one `0x25250` loads (CXBPackedResource on an embedded resource).
 
 ## Assets in .data
 
@@ -47,7 +48,7 @@ Linked from the user's `evoxdash.xbe` at build time (`tools/extract_assets.py`),
 
 | Symbol | Address | Size | What |
 |---|---|---|---|
-| `g_EmbeddedXpr` | 0x83750 | 0x11000 | XPR, 2 resources (CEmbeddedResource, `0x25250`) |
+| `g_FontXpr` | 0x83750 | 0x11000 | XPR: font texture + glyph table (CXBFont, `0x25250`) |
 | `g_ResourceXpr` | 0xCF240 | 0x26E000 | XPR, 4 resources; tags `xray1.bmp`, `xray2.bmp` at 0x94D70 (CXBPackedResource, `0x26180`) |
 | `g_LogoMesh` | 0x33D240 | 0x96F00 | XBG mesh `XBG\x02`, 1 frame (CXBMesh, `0x25C80`) |
 

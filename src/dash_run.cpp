@@ -110,7 +110,7 @@ void CEvoxDash::Run()
     m_FC8 = 0;
     m_FCC = 0;
     m_10D0 = false;
-    m_268 = 0xFF;
+    m_labelAlpha = 0xFF;
     m_10D4 = 0;
     m_fadeAlpha = 0;
     m_192C = 0;

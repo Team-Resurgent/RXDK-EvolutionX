@@ -4,8 +4,8 @@
 #include <xtl.h>
 
 extern "C" {
-extern BYTE g_EmbeddedXpr[];   // 0x83750 in the original: XPR, 2 resources (CEmbeddedResource)
-extern const DWORD g_EmbeddedXprSize;
+extern BYTE g_FontXpr[];       // 0x83750 in the original: XPR, the font texture and glyphs (CXBFont)
+extern const DWORD g_FontXprSize;
 extern BYTE g_ResourceXpr[];   // 0xCF240: XPR, 4 resources (CXBPackedResource)
 extern const DWORD g_ResourceXprSize;
 extern BYTE g_LogoMesh[];      // 0x33D240: XBG mesh (CXBMesh)

@@ -1,4 +1,4 @@
-# Map EvoX's own functions (0x11000..0x26A3F and the _text/text sections): size, callers, callees
+# Map EvoX's own functions (0x11000..0x26A80 and the _text/text sections): size, callers, callees
 # and the strings each one uses, from the Ghidra export in rea/decomp and the original's code.
 # usage: python tools/funcmap.py > docs/functions.md
 import capstone, os, re, struct, collections
@@ -23,7 +23,7 @@ for va, vs, r, rs in secs[6:8]:  # .rdata, .data
     for m in re.finditer(rb'[ -~\t\r\n]{4,}\0', d[r:r + rs]):
         strs[va + m.start()] = m.group()[:-1].decode().strip()
 
-APP = [(0x11000, 0x26A40), (0x5958A0, 0x59641D), (0x596420, 0x596919)]
+APP = [(0x11000, 0x26A81), (0x5958A0, 0x59641D), (0x596420, 0x596919)]
 def in_app(a): return any(s <= a < e for s, e in APP)
 
 funcs = {}

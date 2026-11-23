@@ -13,8 +13,10 @@ Rebuilt so far: `main` (start-up, Q: mapping, evox.ini settings, MS-dashboard ha
 config and start-up), the evox.ini reader/writer (`CIniFile`), the debug log, gamepad input, and
 the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Misc]` settings),
 `Destroy`, `Render` (draw passes, fade of the last title's screen, screenshot, screen saver) and
-`Run` (the frame loop with its action and fade state machines). In xemu the frame loop runs and
-presents frames; the screen stays black until the draw passes are rebuilt. What `main` calls
+`Run` (the frame loop with its action and fade state machines), the sample-framework classes EvoX
+built in (font, XBG mesh, packed resources), the drawing helpers, the skin's text labels and
+variables, and the logo: in xemu the turning chrome EvolutionX logo is drawn. The background and
+the menus follow with the skin loader and the menu code. What `main` calls
 but is not rebuilt yet is in `include/evox/pending.h`: stubs in `src/pending.cpp` log
 `pending: <name> (<original address>)` and return a neutral result. Source comments give each
 function's address in the original, so it can be checked against the disassembly.

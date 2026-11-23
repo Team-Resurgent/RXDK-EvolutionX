@@ -42,22 +42,6 @@ void Tick1FE70() { PENDING_ONCE("Tick1FE70", 0x1FE70); }
 void Tick21820() { PENDING_ONCE("Tick21820", 0x21820); }
 
 // stub classes from dash.h
-CEmbeddedResource::CEmbeddedResource() { memset(raw, 0, sizeof raw); }
-CEmbeddedResource::~CEmbeddedResource() {}
-HRESULT CEmbeddedResource::Create(IDirect3DDevice8 *, DWORD) { PENDING("CEmbeddedResource::Create", 0x25250); return S_OK; }
-CXBPackedResource::CXBPackedResource() { memset(raw, 0, sizeof raw); }
-CXBPackedResource::~CXBPackedResource() {}
-HRESULT CXBPackedResource::Create(IDirect3DDevice8 *, const void *, DWORD, void *)
-{
-    PENDING("CXBPackedResource::Create", 0x26180);
-    return S_OK;
-}
-CXBMesh::CXBMesh() { memset(raw, 0, sizeof raw); }
-HRESULT CXBMesh::Create(IDirect3DDevice8 *, const void *, CXBPackedResource *)
-{
-    PENDING("CXBMesh::Create", 0x25C80);
-    return S_OK;
-}
 CMenuItem *CMenu::GetItem(int)
 {
     static char empty[1];
@@ -69,18 +53,17 @@ CDebugServer::CDebugServer() { memset(this, 0, sizeof *this); PENDING("CDebugSer
 CFtpServer::CFtpServer() { memset(this, 0, sizeof *this); PENDING("CFtpServer::CFtpServer", 0x14D90); }
 
 void CEvoxDash::InitItems() { PENDING("CEvoxDash::InitItems", 0x1D680); }
-void CEvoxDash::LoadSkin(const char *name) { Log("pending: CEvoxDash::LoadSkin (0x1CC80) %s\n", name); }
+void CEvoxDash::LoadSkin(const char *name)
+{
+    Log("pending: CEvoxDash::LoadSkin (0x1CC80) %s\n", name);
+    m_logoType = 0; // (the real LoadSkin sets it before reading [skin] LogoType)
+}
 void CEvoxDash::ReleaseSkin() { PENDING("CEvoxDash::ReleaseSkin", 0x195E0); }
 void CEvoxDash::OpenSettings() { PENDING("CEvoxDash::OpenSettings", 0x1A150); }
 void CEvoxDash::OpenFileView(const char *) { PENDING("CEvoxDash::OpenFileView", 0x1B130); }
 void CEvoxDash::OpenItem() { PENDING("CEvoxDash::OpenItem", 0x1CAC0); }
-void CEvoxDash::DrawBackground() { PENDING_ONCE("CEvoxDash::DrawBackground", 0x18010); }
-void CEvoxDash::DrawPass17CD0() { PENDING_ONCE("CEvoxDash::DrawPass17CD0", 0x17CD0); }
-void CEvoxDash::DrawPass1CA50() { PENDING_ONCE("CEvoxDash::DrawPass1CA50", 0x1CA50); }
 void CEvoxDash::DrawMenu() { PENDING_ONCE("CEvoxDash::DrawMenu", 0x18320); }
 void CEvoxDash::DrawPass187B0() { PENDING_ONCE("CEvoxDash::DrawPass187B0", 0x187B0); }
 void CEvoxDash::DrawSettings() { PENDING_ONCE("CEvoxDash::DrawSettings", 0x1B820); }
 void CEvoxDash::DrawPass18D10() { PENDING_ONCE("CEvoxDash::DrawPass18D10", 0x18D10); }
 void CEvoxDash::DrawMessage() { PENDING_ONCE("CEvoxDash::DrawMessage", 0x18E30); }
-void CEvoxDash::DrawQuad(IDirect3DTexture8 *, float, void *) { PENDING_ONCE("CEvoxDash::DrawQuad", 0x17450); }
-void CEvoxDash::DrawRect(float, float, float, float, DWORD, DWORD) { PENDING_ONCE("CEvoxDash::DrawRect", 0x18140); }
