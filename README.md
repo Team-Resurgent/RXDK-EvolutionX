@@ -27,7 +27,9 @@ that the original carried. The output XBE is not packed.
 - **RXDK** (clang, the SDK, `Rxdk.Cli` and `imagebld`) in its default root
   (`%ProgramData%\RXDK` on Windows, `~/Library/Application Support/RXDK` on macOS,
   `~/.local/share/rxdk` on Linux), or set `RXDK`.
-- **Bash** (Git Bash on Windows).
+- **Bash** (Git Bash on Windows) and **Python 3** (standard library only).
+- **Your own `evoxdash.xbe`** (EvolutionX build 3935) in the project root, for EvoX's built-in
+  graphics. It is not part of this repository.
 
 ## Build
 
@@ -35,20 +37,25 @@ that the original carried. The output XBE is not packed.
 ./build.sh
 ```
 
-Writes `out/evoxdash.xbe`. `RX_OUT=<dir>` builds somewhere else; `EXTRA_CFLAGS` adds flags.
+Writes `out/evoxdash.xbe`. EvoX carries its graphics inside its XBE: two XPR texture packs and
+the XBG logo mesh. `tools/extract_assets.py` takes them from your `evoxdash.xbe` at build time
+(checked by SHA-256, so only build 3935 is accepted) and the build links them in unchanged; nothing
+extracted is committed. `EVOX_XBE=<path>` points at the original elsewhere. Without it the XBE
+still builds, with a warning, and has no graphics.
+
+`RX_OUT=<dir>` builds somewhere else; `EXTRA_CFLAGS` adds flags; `PYTHON` picks the Python 3.
 
 ## Working from the original
 
-The original binary is not part of this repository. With `evoxdash.xbe` (build 3935) in the
-project root:
+With `evoxdash.xbe` (build 3935) in the project root:
 
 ```bash
-python tools/unpack_evox.py evoxdash.xbe work/evoxdash_unpacked.xbe   # needs unicorn
+python tools/unpack_evox.py evoxdash.xbe work/evoxdash_unpacked.xbe
 python tools/xbe2pe.py work/evoxdash_unpacked.xbe work/evoxdash.exe  # PE for Ghidra / REA
 ```
 
-`tools/unpack_evox.py` runs the original's own decompression stub in an emulator to get the inner
-XBE. `tools/xbe2pe.py` keeps every section at its original address and turns the kernel thunk
+`evoxdash.xbe` is a loader stub around the real XBE, stored as raw DEFLATE; `tools/unpack_evox.py`
+inflates it. `tools/xbe2pe.py` keeps every section at its original address and turns the kernel thunk
 table into `xboxkrnl.exe` imports by ordinal. `rea decompile-all work/evoxdash.exe --output
 rea/decomp --provider ghidra` then writes Ghidra pseudocode for every function.
 

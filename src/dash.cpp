@@ -4,6 +4,7 @@
 #include <d3dx8.h>
 #include <xgraphics.h>
 #include <string.h>
+#include "evox/assets.h"
 #include "evox/dash.h"
 #include "evox/globals.h"
 #include "evox/inifile.h"
@@ -16,7 +17,7 @@ static_assert(offsetof(CEvoxDash, m_InputDeviceTypes) == 0x09C, "m_InputDeviceTy
 static_assert(offsetof(CEvoxDash, m_DefaultGamepad) == 0x0A8, "m_DefaultGamepad");
 static_assert(offsetof(CEvoxDash, m_embedded) == 0x184, "m_embedded");
 static_assert(offsetof(CEvoxDash, m_xpr) == 0x1D4, "m_xpr");
-static_assert(offsetof(CEvoxDash, m_font) == 0x200, "m_font");
+static_assert(offsetof(CEvoxDash, m_mesh) == 0x200, "m_mesh");
 static_assert(offsetof(CEvoxDash, m_action) == 0x280, "m_action");
 static_assert(offsetof(CEvoxDash, m_E8C) == 0xE8C, "m_E8C");
 static_assert(offsetof(CEvoxDash, m_ftp) == 0xFB0, "m_ftp");
@@ -37,6 +38,8 @@ IDirect3DDevice8 *g_pd3dDevice;
 CDebugServer *g_DebugServer;
 int g_Shade;
 static BYTE g_Unknown3D84B8[0x100]; // 0x3D84B8 cleared by Create
+
+XBRESOURCE g_ResourceTags[] = {{"xray1.bmp", 0x28}, {"xray2.bmp", 0x3C}, {nullptr, 0}};
 
 CEvoxDash::CEvoxDash()
 {
@@ -75,6 +78,8 @@ CEvoxDash::~CEvoxDash() {}
 HRESULT CEvoxDash::Create()
 {
     memset(g_Unknown3D84B8, 0, sizeof g_Unknown3D84B8);
+    if (!g_ResourceXprSize)
+        Log("dash\t: built without EvoX's graphics (no evoxdash.xbe at build time)\n\r");
 
     // the sample framework's start-up
     Log("XBApp: Creating Direct3D...\n");
@@ -117,9 +122,9 @@ HRESULT CEvoxDash::Create()
     }
     if (m_xpr.Create(m_pd3dDevice, g_ResourceXpr, 4, g_ResourceTags) < 0)
         return 1;
-    m_font = new CXBFont;
-    if (m_font->Create(m_pd3dDevice, g_FontData, &m_xpr) < 0)
-        return S_OK; // (as in the original: a missing font ends Create early, but succeeds)
+    m_mesh = new CXBMesh;
+    if (m_mesh->Create(m_pd3dDevice, g_LogoMesh, &m_xpr) < 0)
+        return S_OK; // (as in the original: a failed mesh ends Create early, but succeeds)
 
     D3DXMATRIX proj, view;
     D3DXMatrixPerspectiveFovLH(&proj, F32(0x3F490FDB), F32(0x3FAAAAAB), F32(0x3DCCCCCD), F32(0x44FA0000)); // pi/4, 4/3, 0.1, 2000

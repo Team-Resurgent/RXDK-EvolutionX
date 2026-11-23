@@ -24,10 +24,10 @@ public:
     BYTE raw[0x10];
 };
 
-class CXBFont { // 0x18 bytes
+class CXBMesh { // 0x18 bytes; the sample framework's XBG mesh (EvoX's logo model)
 public:
-    CXBFont();                                                                      // 0x25BB0
-    HRESULT Create(IDirect3DDevice8 *dev, const void *font, CXBPackedResource *res); // 0x25C80
+    CXBMesh();                                                                     // 0x25BB0
+    HRESULT Create(IDirect3DDevice8 *dev, const void *xbg, CXBPackedResource *res); // 0x25C80
     BYTE raw[0x18];
 };
 
@@ -121,7 +121,7 @@ public:
     BOOL m_hasPersisted;             // +0x1F4 the last title's screen is shown and faded out
     IDirect3DSurface8 *m_persistSurface; // +0x1F8
     IDirect3DTexture8 *m_persistTexture; // +0x1FC
-    CXBFont *m_font;                 // +0x200
+    CXBMesh *m_mesh;                 // +0x200
     BYTE m_fadeVerts[0x60];          // +0x204 vertices for the state-1 quad
     BYTE m_264;
     BYTE pad265[3];

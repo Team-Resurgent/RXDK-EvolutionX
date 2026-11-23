@@ -41,10 +41,6 @@ void Tick1F610() { PENDING_ONCE("Tick1F610", 0x1F610); }
 void Tick1FE70() { PENDING_ONCE("Tick1FE70", 0x1FE70); }
 void Tick21820() { PENDING_ONCE("Tick21820", 0x21820); }
 
-const void *const g_ResourceXpr = nullptr;
-void *const g_ResourceTags = nullptr;
-const void *const g_FontData = nullptr;
-
 // stub classes from dash.h
 CEmbeddedResource::CEmbeddedResource() { memset(raw, 0, sizeof raw); }
 CEmbeddedResource::~CEmbeddedResource() {}
@@ -56,10 +52,10 @@ HRESULT CXBPackedResource::Create(IDirect3DDevice8 *, const void *, DWORD, void 
     PENDING("CXBPackedResource::Create", 0x26180);
     return S_OK;
 }
-CXBFont::CXBFont() { memset(raw, 0, sizeof raw); }
-HRESULT CXBFont::Create(IDirect3DDevice8 *, const void *, CXBPackedResource *)
+CXBMesh::CXBMesh() { memset(raw, 0, sizeof raw); }
+HRESULT CXBMesh::Create(IDirect3DDevice8 *, const void *, CXBPackedResource *)
 {
-    PENDING("CXBFont::Create", 0x25C80);
+    PENDING("CXBMesh::Create", 0x25C80);
     return S_OK;
 }
 CMenuItem *CMenu::GetItem(int)

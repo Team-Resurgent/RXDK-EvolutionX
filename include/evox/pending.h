@@ -32,8 +32,3 @@ void ClockTick();                         // 0x12390 SNTP clock, after each fram
 void Tick1F610();                         // 0x1F610 after each frame
 void Tick1FE70();                         // 0x1FE70 after each frame
 void Tick21820();                         // 0x21820 after each frame
-
-// data embedded in the original, not extracted yet (NULL for now)
-extern const void *const g_ResourceXpr;   // 0xCF240 XPR with 4 resources
-extern void *const g_ResourceTags;        // 0x94D70 their names
-extern const void *const g_FontData;      // 0x33D240

@@ -1,7 +1,7 @@
 # EvolutionX 3935 layout (from `work/evoxdash_unpacked.xbe`)
 
-`evoxdash.xbe` is packed. `tools/unpack_evox.py` runs the stub's decompressor (0x127F0) under
-unicorn and writes the inner XBE. Its header stores addresses plain (not XOR-scrambled).
+`evoxdash.xbe` is packed: a loader stub around the real XBE, stored as raw DEFLATE (descriptor at
+0x12C78, stream at 0x12C84). `tools/unpack_evox.py` inflates it. Its header stores addresses plain (not XOR-scrambled).
 `tools/xbe2pe.py` wraps it in a PE (same addresses, kernel imports as `xboxkrnl.exe` ordinals) for
 Ghidra: `work/evoxdash.exe`. `rea decompile-all` wrote Ghidra pseudocode for every function to
 `rea/decomp/functions/<addr>.c` (1816 written, 1 failure in XNet, 113 imports).
@@ -35,8 +35,21 @@ Start-up: entry 0x29F53 (XAPI) creates the main thread at 0x29EDF, which runs th
 | XNET | 0x66880..0x750D8 | XNet | no: libxnet |
 | XPP | 0x750E0..0x7D5A4 | XInput / peripherals | no: libxapi |
 | .rdata | 0x7D5C0..0x836DC | kernel thunk, strings, constants | data |
-| .data | 0x836E0..0x595898 | 3.3 MB raw / 5.3 MB virtual: two XPR0 textures (0x83750, 0xCF240), strings, globals | data |
+| .data | 0x836E0..0x595898 | 3.3 MB raw / 5.3 MB virtual: strings, globals and the assets below | data |
 | _text | 0x5958A0..0x59641D | 7 functions: in-game reset / ELL support | yes |
 | text | 0x596420..0x596919 | ELL loader (`tdata\evox\evox.ell`) | yes |
 
 The XPR at 0x83750 is the one `0x25250` loads (CXBPackedResource on an embedded resource).
+
+## Assets in .data
+
+Linked from the user's `evoxdash.xbe` at build time (`tools/extract_assets.py`), not committed:
+
+| Symbol | Address | Size | What |
+|---|---|---|---|
+| `g_EmbeddedXpr` | 0x83750 | 0x11000 | XPR, 2 resources (CEmbeddedResource, `0x25250`) |
+| `g_ResourceXpr` | 0xCF240 | 0x26E000 | XPR, 4 resources; tags `xray1.bmp`, `xray2.bmp` at 0x94D70 (CXBPackedResource, `0x26180`) |
+| `g_LogoMesh` | 0x33D240 | 0x96F00 | XBG mesh `XBG`, 1 frame (CXBMesh, `0x25C80`) |
+
+0x97450..0xB8000 in .data is x86 code, not an asset: a separately built image EvoX carries
+(likely the in-game-reset payload installed on exit). To be looked at with the IGR code.
