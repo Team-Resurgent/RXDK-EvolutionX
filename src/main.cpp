@@ -3,6 +3,7 @@
 #include <winsockx.h>
 #include <stdlib.h>
 #include <string.h>
+#include "evox/dash.h"
 #include "evox/globals.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
@@ -259,7 +260,7 @@ void __cdecl main()
                 ChameleonSetLed(0);
         }
         if (dash.m_InstallIgr) {
-            IgrPrepare();
+            PrepareForExit();
             Log("Main : Done\n\r");
             Log("Main : Check InsIGR\n\r");
             if (g_TsrType) {

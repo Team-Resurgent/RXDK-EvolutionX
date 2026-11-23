@@ -10,7 +10,11 @@ See [docs/layout.md](docs/layout.md) for what is EvoX's own code and what comes 
 libraries.
 
 Rebuilt so far: `main` (start-up, Q: mapping, evox.ini settings, MS-dashboard hand-off, network
-config and start-up), the evox.ini reader/writer (`CIniFile`) and the debug log. What `main` calls
+config and start-up), the evox.ini reader/writer (`CIniFile`), the debug log, gamepad input, and
+the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Misc]` settings),
+`Destroy`, `Render` (draw passes, fade of the last title's screen, screenshot, screen saver) and
+`Run` (the frame loop with its action and fade state machines). In xemu the frame loop runs and
+presents frames; the screen stays black until the draw passes are rebuilt. What `main` calls
 but is not rebuilt yet is in `include/evox/pending.h`: stubs in `src/pending.cpp` log
 `pending: <name> (<original address>)` and return a neutral result. Source comments give each
 function's address in the original, so it can be checked against the disassembly.

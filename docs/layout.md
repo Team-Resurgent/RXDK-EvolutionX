@@ -13,9 +13,14 @@ Header: XDK 5455, title id 586F7645 "RemoteX", init flags 0xC, entry 0x29F53, ke
 
 | Range | What | Rebuild? |
 |---|---|---|
-| 0x11000..0x24E2F | EvoX itself: FTP/telnet commands, network setup, SNTP clock, skins, trainers, BIOS/HDD backup and flash, launching, `q:\evox.ini`; also its **modified** `CXBApplication::Create` (XBApp strings at 0x1D952) and its own XPR loader (0x1DAEF). `main` = 0x24220 (to 0x24DA6). ~185 functions found by Ghidra | yes, as C/C++ |
-| 0x24E30..~0x2628F | XDK sample framework: CXBFont (0x24E30.., font header check 0x25C80), CXBPackedResource (XPR0 check 0x26180), helpers | check against RXDK `samples/RxdkSamples/Common` (xbfont/xbresource/xbutil); reuse where unmodified |
-| ~0x26290..0x35ACC | C runtime (LIBCMT), XAPI (title meta, `t:\$u`, partitions; XapiTitleStartup at the entry), XKBDD keyboard driver, CRT math/printf | no: RXDK libc / libxapi / xkbd |
+| 0x11000..0x24E2F | EvoX itself: FTP/telnet commands, network setup, SNTP clock, skins, trainers, BIOS/HDD backup and flash, launching, `q:\evox.ini`; the dashboard object (its `Create` 0x1D920 is the sample framework's `CXBApplication::Create` with EvoX's set-up folded in). `main` = 0x24220 (to 0x24DA6) | yes, as C/C++ |
+| 0x24E30..0x2628F | EvoX's menu/list class (0x24E30.., `GetItem` 0x24E90), its embedded-resource class (0x25200..0x256B0, XPR at 0x83750), font class (0x18 bytes: 0x25BB0, `Create` 0x25C80) and the framework's packed-resource loader (0x26110..0x26280, XPR0 check 0x26180) | yes |
+| 0x26290..0x26488 | a socket wrapper class over XNet | yes |
+| 0x26490..0x26A31 | the sample framework's `xbinput.cpp` (`XBInput_CreateGamepads`, `XBInput_RefreshDeviceList`, `XBInput_GetInput`) | rebuilt: `src/xbinput.cpp` |
+| 0x26A40..0x35ACC | C runtime (LIBCMT), XAPI (title meta, `t:\$u`, partitions; XapiTitleStartup at the entry), XKBDD keyboard driver, CRT math/printf | no: RXDK libc / libxapi / xkbd |
+
+`docs/functions.md` (`tools/funcmap.py`) lists EvoX's 237 functions (81.5 KB): size, callers,
+callees and the strings each one uses.
 
 Start-up: entry 0x29F53 (XAPI) creates the main thread at 0x29EDF, which runs the CRT initializers
 (0x2C573, 0x27D8F, 0x2C4E6, 0x2C48E) and calls `main` (0x24220).

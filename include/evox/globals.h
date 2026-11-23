@@ -26,3 +26,12 @@ extern bool g_Unknown591A98;         // 0x591A98
 extern BYTE g_GameRegionOverride;    // 0x47BC58 region for the IGR when non-zero (else [Misc] GameRegion)
 extern BYTE g_GameRegion;            // 0x5964FF region for the IGR
 extern bool g_Unknown596500;         // 0x596500 copy of g_Unknown591A98 for the IGR
+extern BYTE g_IgrFlags;              // 0x59647B per launched item: 1 / 2 from its flags 0x400 / 0x800
+extern BYTE g_Unknown95BC0;          // 0x95BC0 (0xFF)
+extern BYTE g_Unknown95BC1;          // 0x95BC1 (0xFF)
+extern WORD g_Unknown57E5C8;         // 0x57E5C8
+extern WORD g_Unknown57EDC8;         // 0x57EDC8
+extern BYTE g_Unknown95D64;          // 0x95D64 (1) cleared by items with flag 0x100
+extern int g_Unknown57E5BC;          // 0x57E5BC state 14 waits for 0
+extern bool g_Unknown57E5C0;         // 0x57E5C0 a message for the screen is in g_Unknown47CFE0
+extern char g_Unknown47CFE0[0x100];  // 0x47CFE0
