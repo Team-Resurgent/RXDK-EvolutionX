@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "evox/debugserver.h"
+#include "evox/guard.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
 #include "evox/system.h"
@@ -510,11 +511,8 @@ static DWORD WINAPI DebugSessionThread(LPVOID param)
 {
     DebugSession *session = (DebugSession *)param;
     g_NetThreads = g_NetThreads + 1;
-    try {
-        session->server->Session(session->socket);
-    } catch (...) {
+    if (!CrashGuard([&] { session->server->Session(session->socket); })) // catch (...) 0x22BD1
         Log("Debug : DebugConnect Error\n\r");
-    }
     g_NetThreads = g_NetThreads - 1;
     delete session;
     ExitThread(0);
@@ -524,46 +522,49 @@ static DWORD WINAPI DebugSessionThread(LPVOID param)
 void CDebugServer::Listen()
 {
     timeval wait = {1, 0};
-    m_listen = new CSocket(true);
-    memset(&m_addr, 0, sizeof m_addr);
-    m_addr.sin_family = AF_INET;
-    m_addr.sin_port = htons(731);
-    m_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    m_listen->Bind(&m_addr);
-    CSocket *lookup = new CSocket(false);
-    int reuse = 1;
-    lookup->SetOption(SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, 4);
-    lookup->Bind(&m_addr);
-    g_NotifySocket = new CSocket(true);
-    m_listen->Listen(10);
-    while (g_StopNetwork != true) {
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(m_listen->Handle(), &fds);
-        FD_SET(lookup->Handle(), &fds);
-        if (select(0, &fds, nullptr, nullptr, &wait) == SOCKET_ERROR)
-            continue;
-        if (FD_ISSET(m_listen->Handle(), &fds)) {
-            SOCKET s = m_listen->Accept(nullptr);
-            if (s != INVALID_SOCKET) {
-                DebugSession *session = new DebugSession{this, s};
-                // (the thread handle is not closed, as in the original)
-                SetThreadPriority(CreateThread(nullptr, 0, DebugSessionThread, session, 0, nullptr),
-                                  THREAD_PRIORITY_HIGHEST);
+    CSocket *lookup = nullptr;
+    CrashGuard([&] { // catch (...) 0x22EEA: a fault stops the server
+        m_listen = new CSocket(true);
+        memset(&m_addr, 0, sizeof m_addr);
+        m_addr.sin_family = AF_INET;
+        m_addr.sin_port = htons(731);
+        m_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        m_listen->Bind(&m_addr);
+        lookup = new CSocket(false);
+        int reuse = 1;
+        lookup->SetOption(SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, 4);
+        lookup->Bind(&m_addr);
+        g_NotifySocket = new CSocket(true);
+        m_listen->Listen(10);
+        while (g_StopNetwork != true) {
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(m_listen->Handle(), &fds);
+            FD_SET(lookup->Handle(), &fds);
+            if (select(0, &fds, nullptr, nullptr, &wait) == SOCKET_ERROR)
+                continue;
+            if (FD_ISSET(m_listen->Handle(), &fds)) {
+                SOCKET s = m_listen->Accept(nullptr);
+                if (s != INVALID_SOCKET) {
+                    DebugSession *session = new DebugSession{this, s};
+                    // (the thread handle is not closed, as in the original)
+                    SetThreadPriority(CreateThread(nullptr, 0, DebugSessionThread, session, 0, nullptr),
+                                      THREAD_PRIORITY_HIGHEST);
+                }
+            }
+            if (FD_ISSET(lookup->Handle(), &fds)) {
+                char packet[0x104];
+                sockaddr_in from;
+                lookup->RecvFrom(packet, 0x102, &from);
+                int length = (signed char)packet[1];
+                packet[2 + length] = 0;
+                if (_stricmp(packet + 2, g_DebugName) == 0) {
+                    packet[0] = 2;
+                    lookup->SendTo(packet, length + 2, &from);
+                }
             }
         }
-        if (FD_ISSET(lookup->Handle(), &fds)) {
-            char packet[0x104];
-            sockaddr_in from;
-            lookup->RecvFrom(packet, 0x102, &from);
-            int length = (signed char)packet[1];
-            packet[2 + length] = 0;
-            if (_stricmp(packet + 2, g_DebugName) == 0) {
-                packet[0] = 2;
-                lookup->SendTo(packet, length + 2, &from);
-            }
-        }
-    }
+    });
     if (m_listen) { // (closed, not deleted)
         m_listen->Close();
         m_listen = nullptr;
@@ -580,11 +581,8 @@ void CDebugServer::Listen()
 static DWORD WINAPI DebugListenThread(LPVOID param)
 {
     g_NetThreads = g_NetThreads + 1;
-    try {
-        ((CDebugServer *)param)->Listen();
-    } catch (...) {
+    if (!CrashGuard([&] { ((CDebugServer *)param)->Listen(); })) // catch (...) 0x22F8D
         Log("Debug : DebugInitNet Error\n\r");
-    }
     g_NetThreads = g_NetThreads - 1;
     ExitThread(0);
 }

@@ -6,7 +6,9 @@
 #include <string.h>
 #include "evox/ftp.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/inifile.h"
+#include "evox/log.h"
 #include "evox/system.h"
 
 extern int g_FtpUsers;       // 0x3D6FD8 (ftp.cpp)
@@ -50,7 +52,8 @@ static DWORD WINAPI SessionThread(LPVOID arg)
 {
     FtpConnection *c = (FtpConnection *)arg;
     g_NetThreads = g_NetThreads + 1;
-    c->server->Session(c->s);
+    if (!CrashGuard([&] { c->server->Session(c->s); })) // catch (...) 0x14BC1
+        Log("FTP : DoThreadConnect Error\n\r");
     g_NetThreads = g_NetThreads - 1;
     delete c;
     return 0;
@@ -60,7 +63,8 @@ static DWORD WINAPI SessionThread(LPVOID arg)
 static DWORD WINAPI ServerThread(LPVOID arg)
 {
     g_NetThreads = g_NetThreads + 1;
-    ((CFtpServer *)arg)->ListenLoop();
+    if (!CrashGuard([&] { ((CFtpServer *)arg)->ListenLoop(); })) // catch (...) 0x14D7B
+        Log("FTP : nReciveNet Error\n\r");
     g_NetThreads = g_NetThreads - 1;
     return 0;
 }
@@ -127,349 +131,354 @@ void CFtpServer::Session(SOCKET sock)
 {
     char line[0x200], cwd[0x400], user[0x80] = {}, arg0[0x200], path[0x200], tmp[0x200], target[0x200];
     bool loggedIn = false, running = true;
+    CSocket *data = nullptr, *ctrl = nullptr;
     g_FtpUsers++;
-    CSocket *data = new CSocket(true);
-    CSocket *ctrl = new CSocket(sock);
-    strcpy(cwd, "/");
-    if (g_FtpUsers == 5) {
-        running = false;
-        FtpReply(this, ctrl, "421- No More Users Allowed.\r\n");
-    } else {
-        FtpReply(this, ctrl, "220 Please enter your login name now.\r\n");
-    }
+    CrashGuard([&] { // catch (...) 0x14A7A: a fault ends the session
+        data = new CSocket(true);
+        ctrl = new CSocket(sock);
+        strcpy(cwd, "/");
+        if (g_FtpUsers == 5) {
+            running = false;
+            FtpReply(this, ctrl, "421- No More Users Allowed.\r\n");
+        } else {
+            FtpReply(this, ctrl, "220 Please enter your login name now.\r\n");
+        }
 
-    while (running) {
-        if (g_StopNetwork == true) {
-            running = false;
-            continue;
-        }
-        if (!ReadLine(ctrl, line)) {
-            running = false;
-            continue;
-        }
-        char *word = strtok(line, " ");
-        if (!word)
-            continue;
-        strlwr(word);
-        bool found = false;
-        int id = -1;
-        for (int i = 0; i < 26; i++) {
-            if (_stricmp(s_FtpCommands[i].name, word) != 0)
+        while (running) {
+            if (g_StopNetwork == true) {
+                running = false;
                 continue;
-            found = true;
-            if (loggedIn || s_FtpCommands[i].id == FTP_USER || s_FtpCommands[i].id == FTP_PASS) {
-                id = s_FtpCommands[i].id;
-                break;
             }
-            running = false; // not logged in
-        }
-        if (!found) {
-            FtpReply(this, ctrl, "502 %s is not implemented.\r\n", word);
-            continue;
-        }
-        char *arg;
-        switch (id) {
-        case FTP_SYST:
-            FtpReply(this, ctrl, "215 UNIX Type: L8\r\n");
-            break;
-
-        case FTP_PWD:
-            FtpReply(this, ctrl, "257 \"%s\" is current directory\r\n", cwd);
-            break;
-
-        case FTP_TYPE:
-            arg = strtok(nullptr, " ");
-            if (arg && (arg[0] == 'I' || arg[0] == 'i')) // (no argument crashed the original)
-                FtpReply(this, ctrl, "200 Type set to IMAGE.\r\n");
-            else
-                FtpReply(this, ctrl, "200 Type set to ASCII.\r\n");
-            break;
-
-        case FTP_PORT: { // h1,h2,h3,h4,p1,p2: connect to it, 10 tries a second apart
-            memset(&m_dataAddr, 0, sizeof m_dataAddr);
-            m_dataAddr.sin_family = AF_INET;
-            BYTE *ip = (BYTE *)&m_dataAddr.sin_addr;
-            for (int i = 0; i < 4; i++)
-                ip[i] = (BYTE)strtol(strtok(nullptr, ","), nullptr, 10);
-            int p1 = strtol(strtok(nullptr, ","), nullptr, 10);
-            int p2 = strtol(strtok(nullptr, ","), nullptr, 10);
-            int port = p1 + (p2 << 8); // network order in memory: p1 is the high byte
-            m_dataAddr.sin_port = (u_short)port;
-            data->Create(true);
-            int result = 0;
-            for (int tries = 10; tries; tries--) {
-                if ((result = data->Connect(&m_dataAddr)) == 0)
+            if (!ReadLine(ctrl, line)) {
+                running = false;
+                continue;
+            }
+            char *word = strtok(line, " ");
+            if (!word)
+                continue;
+            strlwr(word);
+            bool found = false;
+            int id = -1;
+            for (int i = 0; i < 26; i++) {
+                if (_stricmp(s_FtpCommands[i].name, word) != 0)
+                    continue;
+                found = true;
+                if (loggedIn || s_FtpCommands[i].id == FTP_USER || s_FtpCommands[i].id == FTP_PASS) {
+                    id = s_FtpCommands[i].id;
                     break;
-                Sleep(1000);
-            }
-            if (result == 0)
-                FtpReply(this, ctrl, "200 Port command ok. \r\n");
-            else // (the port shown is the stored, byte-swapped value)
-                FtpReply(this, ctrl, "425 Can't open data connection to %d.%d.%d.%d:%d\r\n", ip[0], ip[1], ip[2],
-                         ip[3], port);
-            break;
-        }
-
-        case FTP_LIST:
-            FtpReply(this, ctrl, "150 Opening ASCII data connection for ls %s.\r\n", cwd);
-            List(data, cwd);
-            if (cwd[1]) {
-                char drive[4] = {cwd[1], ':', '\\', 0};
-                FreeSpace(drive);
-                FtpReply(this, ctrl, "226 free disk space under this directory : %s\r\n", m_freeSpace);
-            } else {
-                FtpReply(this, ctrl, "226 Transfer finished successfully. Data connection closed.\r\n");
-            }
-            data->Shutdown(SD_SEND);
-            data->Close();
-            break;
-
-        case FTP_RETR:
-            strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
-            FtpReply(this, ctrl, "150 Sending %s\r\n", path);
-            SendFile(data, path);
-            FtpReply(this, ctrl, "226 Transfer finished successfully. Data connection closed.\r\n");
-            data->Shutdown(SD_SEND);
-            data->Close();
-            break;
-
-        case FTP_STOR: {
-            arg = strtok(nullptr, "");
-            if (g_AutoConvNames == true)
-                arg = ConvertName(arg, false);
-            strcpy(path, MakePath(arg, tmp, cwd));
-            HANDLE h = CreateFile(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (h != INVALID_HANDLE_VALUE) {
-                CloseHandle(h);
-                FtpReply(this, ctrl, "150 Opening BINARY data connection for %s\r\n", path);
-                if (ReceiveFile(data, path))
-                    FtpReply(this, ctrl, "226 Transfer finished successfully. Data connection closed.\r\n");
-                else
-                    FtpReply(this, ctrl, "426 Connection closed , file opening failed.\r\n");
-            } else {
-                FtpReply(this, ctrl, "426 Connection closed , file opening failed.\r\n");
-            }
-            data->Shutdown(SD_SEND);
-            data->Close();
-            break;
-        }
-
-        case FTP_DELE:
-            strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
-            SetFileAttributes(path, FILE_ATTRIBUTE_NORMAL);
-            if (DeleteFile(path))
-                FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
-            else
-                FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
-            break;
-
-        case FTP_MKD:
-            arg = strtok(nullptr, "");
-            if (g_AutoConvNames == true)
-                arg = ConvertName(arg, true);
-            strcpy(path, MakePath(arg, tmp, cwd));
-            if (CreateDirectory(path, nullptr))
-                FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
-            else
-                FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
-            break;
-
-        case FTP_RMD:
-            strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
-            if (RemoveDirectory(path))
-                FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
-            else
-                FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
-            break;
-
-        case FTP_RNFR: // the source is kept in path (later commands that use path overwrite it)
-            strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
-            FtpReply(this, ctrl, "350 Requested file action pending further information.\r\n");
-            break;
-
-        case FTP_RNTO:
-            strcpy(target, MakePath(strtok(nullptr, ""), tmp, cwd));
-            if (MoveFile(path, target))
-                FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
-            else
-                FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
-            break;
-
-        case FTP_CDUP: {
-            char *slash = strrchr(cwd, '/');
-            if (slash != cwd) {
-                *slash = 0;
-                strrchr(cwd, '/')[1] = 0;
-            }
-            FtpReply(this, ctrl, "250 \"%s\" is current directory. \r\n", cwd);
-            break;
-        }
-
-        case FTP_CWD: {
-            arg = strtok(nullptr, "");
-            strcpy(arg0, cwd);
-            if (arg[0] == '/') {
-                strcpy(arg0, arg);
-                if (arg0[strlen(arg0) - 1] != '/')
-                    strcat(arg0, "/");
-            } else if (_stricmp("..", arg) == 0) {
-                char *slash = strrchr(arg0, '/');
-                if (slash != arg0) {
-                    *slash = 0;
-                    strrchr(arg0, '/')[1] = 0;
                 }
-            } else {
-                strcat(arg0, arg);
-                strcat(arg0, "/");
+                running = false; // not logged in
             }
-            if (_stricmp(arg0, "/") == 0) {
-                strcpy(cwd, arg0);
-                FtpReply(this, ctrl, "250 \"%s\" is current directory. \r\n", cwd);
-            } else if (DirectoryExists(arg0, cwd) == true) {
-                strcpy(cwd, arg0);
-                FtpReply(this, ctrl, "250 \"%s\" is current directory. \r\n", cwd);
-            } else {
-                FtpReply(this, ctrl, "553 Requested action not taken. %s\r\n", arg0);
+            if (!found) {
+                FtpReply(this, ctrl, "502 %s is not implemented.\r\n", word);
+                continue;
             }
-            break;
-        }
+            char *arg;
+            switch (id) {
+            case FTP_SYST:
+                FtpReply(this, ctrl, "215 UNIX Type: L8\r\n");
+                break;
 
-        case FTP_USER:
-            arg = strtok(nullptr, "");
-            if (!arg)
-                arg = (char *)"";
-            strcpy(user, arg);
-            if (_stricmp(arg, "xbox") == 0) {
-                FtpReply(this, ctrl, "331 Password required for %s.\r\n", user);
-            } else {
-                FtpReply(this, ctrl, "530 Unknown User (%s), Bye.\r\n", user);
-                running = false;
-            }
-            break;
+            case FTP_PWD:
+                FtpReply(this, ctrl, "257 \"%s\" is current directory\r\n", cwd);
+                break;
 
-        case FTP_PASS: // (USER is not required first)
-            arg = strtok(nullptr, "");
-            if (!arg)
-                arg = (char *)"";
-            if (_stricmp(arg, m_password) == 0) {
-                FtpReply(this, ctrl, "230 User %s logged in , proceed.\r\n", user);
-                loggedIn = true;
-            } else {
-                FtpReply(this, ctrl, "530 Wrong Password.\r\n");
-                running = false;
-            }
-            break;
+            case FTP_TYPE:
+                arg = strtok(nullptr, " ");
+                if (arg && (arg[0] == 'I' || arg[0] == 'i')) // (no argument crashed the original)
+                    FtpReply(this, ctrl, "200 Type set to IMAGE.\r\n");
+                else
+                    FtpReply(this, ctrl, "200 Type set to ASCII.\r\n");
+                break;
 
-        case FTP_QUIT:
-            FtpReply(this, ctrl, "221 Goodbye.\r\n");
-            running = false;
-            break;
-
-        case FTP_FLASHBIOS: // the dashboard shows the file and flashes it (Run, m_message)
-            arg = strtok(nullptr, "");
-            if (arg[1] == ':') {
-                strcpy(path, arg);
-            } else {
-                strcpy(path, MakePath(cwd, tmp, cwd));
-                strcat(path, arg);
-            }
-            strcpy(m_messageText, path);
-            m_message = true;
-            FtpReply(this, ctrl, "221 Goodbye. Now trying to flash %s\r\n", path);
-            running = false;
-            break;
-
-        case FTP_EXECUTE:
-            arg = strtok(nullptr, "");
-            if (!arg) {
-                FtpReply(this, ctrl, "200 Usage : Execute <filename.xbe>\r\n");
+            case FTP_PORT: { // h1,h2,h3,h4,p1,p2: connect to it, 10 tries a second apart
+                memset(&m_dataAddr, 0, sizeof m_dataAddr);
+                m_dataAddr.sin_family = AF_INET;
+                BYTE *ip = (BYTE *)&m_dataAddr.sin_addr;
+                for (int i = 0; i < 4; i++)
+                    ip[i] = (BYTE)strtol(strtok(nullptr, ","), nullptr, 10);
+                int p1 = strtol(strtok(nullptr, ","), nullptr, 10);
+                int p2 = strtol(strtok(nullptr, ","), nullptr, 10);
+                int port = p1 + (p2 << 8); // network order in memory: p1 is the high byte
+                m_dataAddr.sin_port = (u_short)port;
+                data->Create(true);
+                int result = 0;
+                for (int tries = 10; tries; tries--) {
+                    if ((result = data->Connect(&m_dataAddr)) == 0)
+                        break;
+                    Sleep(1000);
+                }
+                if (result == 0)
+                    FtpReply(this, ctrl, "200 Port command ok. \r\n");
+                else // (the port shown is the stored, byte-swapped value)
+                    FtpReply(this, ctrl, "425 Can't open data connection to %d.%d.%d.%d:%d\r\n", ip[0], ip[1],
+                             ip[2], ip[3], port);
                 break;
             }
-            if (arg[1] == ':') {
-                strcpy(path, arg);
-            } else {
-                strcpy(path, MakePath(cwd, tmp, cwd));
-                strcat(path, arg);
+
+            case FTP_LIST:
+                FtpReply(this, ctrl, "150 Opening ASCII data connection for ls %s.\r\n", cwd);
+                List(data, cwd);
+                if (cwd[1]) {
+                    char drive[4] = {cwd[1], ':', '\\', 0};
+                    FreeSpace(drive);
+                    FtpReply(this, ctrl, "226 free disk space under this directory : %s\r\n", m_freeSpace);
+                } else {
+                    FtpReply(this, ctrl, "226 Transfer finished successfully. Data connection closed.\r\n");
+                }
+                data->Shutdown(SD_SEND);
+                data->Close();
+                break;
+
+            case FTP_RETR:
+                strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
+                FtpReply(this, ctrl, "150 Sending %s\r\n", path);
+                SendFile(data, path);
+                FtpReply(this, ctrl, "226 Transfer finished successfully. Data connection closed.\r\n");
+                data->Shutdown(SD_SEND);
+                data->Close();
+                break;
+
+            case FTP_STOR: {
+                arg = strtok(nullptr, "");
+                if (g_AutoConvNames == true)
+                    arg = ConvertName(arg, false);
+                strcpy(path, MakePath(arg, tmp, cwd));
+                HANDLE h = CreateFile(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+                                      nullptr);
+                if (h != INVALID_HANDLE_VALUE) {
+                    CloseHandle(h);
+                    FtpReply(this, ctrl, "150 Opening BINARY data connection for %s\r\n", path);
+                    if (ReceiveFile(data, path))
+                        FtpReply(this, ctrl,
+                                 "226 Transfer finished successfully. Data connection closed.\r\n");
+                    else
+                        FtpReply(this, ctrl, "426 Connection closed , file opening failed.\r\n");
+                } else {
+                    FtpReply(this, ctrl, "426 Connection closed , file opening failed.\r\n");
+                }
+                data->Shutdown(SD_SEND);
+                data->Close();
+                break;
             }
-            for (char *p = path; *p; p++)
-                if (*p == '/')
-                    *p = '\\';
-            FtpReply(this, ctrl, "221 Goodbye. Now trying to launch %s\r\n", path);
-            LaunchXbe(path);
-            m_quit = true;
-            g_StopNetwork = true;
-            running = false;
-            break;
 
-        case FTP_DUMPMEM: {
-            DWORD address = 0, length;
-            if ((arg = strtok(nullptr, " ")))
-                address = strtoul(arg, nullptr, 16);
-            if ((arg = strtok(nullptr, " ")) && (length = strtoul(arg, nullptr, 16)))
-                DumpMem(ctrl, address, length);
-            else
-                FtpReply(this, ctrl, "200 Usage : Dumpmem <adr> <len>\r\n");
-            break;
-        }
+            case FTP_DELE:
+                strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
+                SetFileAttributes(path, FILE_ATTRIBUTE_NORMAL);
+                if (DeleteFile(path))
+                    FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
+                else
+                    FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
+                break;
 
-        case FTP_DUMPCDSECTOR: {
-            DWORD sector = 0, count;
-            if ((arg = strtok(nullptr, " ")))
-                sector = strtol(arg, nullptr, 16);
-            if ((arg = strtok(nullptr, " ")) && (count = strtol(arg, nullptr, 16)))
-                DumpCdSector(ctrl, sector, count);
-            else
-                FtpReply(this, ctrl, "200 Usage : DumpCdSector <Sector> <Numbers>\r\n");
-            break;
-        }
+            case FTP_MKD:
+                arg = strtok(nullptr, "");
+                if (g_AutoConvNames == true)
+                    arg = ConvertName(arg, true);
+                strcpy(path, MakePath(arg, tmp, cwd));
+                if (CreateDirectory(path, nullptr))
+                    FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
+                else
+                    FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
+                break;
 
-        case FTP_DUMPHDDSECTOR: {
-            DWORD sector = 0, count;
-            if ((arg = strtok(nullptr, " ")))
-                sector = strtol(arg, nullptr, 16);
-            if ((arg = strtok(nullptr, " ")) && (count = strtol(arg, nullptr, 16)))
-                DumpHddSector(ctrl, sector, count);
-            else
-                FtpReply(this, ctrl, "200 Usage : DumpHddSector <Sector> <Numbers>\r\n");
-            break;
-        }
+            case FTP_RMD:
+                strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
+                if (RemoveDirectory(path))
+                    FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
+                else
+                    FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
+                break;
 
-        case FTP_HDDINFO:
-            DiskInfo(ctrl, "c:\\");
-            DiskInfo(ctrl, "e:\\");
-            DiskInfo(ctrl, "f:\\");
-            DiskInfo(ctrl, "g:\\");
-            DiskInfo(ctrl, "x:\\");
-            DiskInfo(ctrl, "y:\\");
-            DiskInfo(ctrl, "z:\\");
-            FtpReply(this, ctrl, "200 OK\r\n");
-            break;
+            case FTP_RNFR: // the source is kept in path (later commands that use path overwrite it)
+                strcpy(path, MakePath(strtok(nullptr, ""), tmp, cwd));
+                FtpReply(this, ctrl, "350 Requested file action pending further information.\r\n");
+                break;
 
-        case FTP_FORMATPATH:
-            if ((arg = strtok(nullptr, "")))
-                FormatPath(ctrl, arg);
-            else
-                FtpReply(this, ctrl, "200 Usage : Formatpath <\\Device\\Harddisk0\\Partition[1-6]>\r\n");
-            break;
+            case FTP_RNTO:
+                strcpy(target, MakePath(strtok(nullptr, ""), tmp, cwd));
+                if (MoveFile(path, target))
+                    FtpReply(this, ctrl, "250 Requested file action ok.\r\n");
+                else
+                    FtpReply(this, ctrl, "553 Requested action not taken.\r\n");
+                break;
 
-        case FTP_FORMATDRIVE:
-            if ((arg = strtok(nullptr, " "))) {
-                FormatDrive(ctrl, strtoul(arg, nullptr, 16));
-            } else {
-                m_formatKey = 0xFFFFFFFF;
-                m_formatVolume.Length = 0;
-                FtpReply(this, ctrl, "200 Usage : Formatdrive <key>\r\n");
+            case FTP_CDUP: {
+                char *slash = strrchr(cwd, '/');
+                if (slash != cwd) {
+                    *slash = 0;
+                    strrchr(cwd, '/')[1] = 0;
+                }
+                FtpReply(this, ctrl, "250 \"%s\" is current directory. \r\n", cwd);
+                break;
             }
-            break;
 
-        case FTP_AUTOCONVNAMES:
-            g_AutoConvNames = true;
-            FtpReply(this, ctrl, "200 OK\r\n");
-            break;
+            case FTP_CWD: {
+                arg = strtok(nullptr, "");
+                strcpy(arg0, cwd);
+                if (arg[0] == '/') {
+                    strcpy(arg0, arg);
+                    if (arg0[strlen(arg0) - 1] != '/')
+                        strcat(arg0, "/");
+                } else if (_stricmp("..", arg) == 0) {
+                    char *slash = strrchr(arg0, '/');
+                    if (slash != arg0) {
+                        *slash = 0;
+                        strrchr(arg0, '/')[1] = 0;
+                    }
+                } else {
+                    strcat(arg0, arg);
+                    strcat(arg0, "/");
+                }
+                if (_stricmp(arg0, "/") == 0) {
+                    strcpy(cwd, arg0);
+                    FtpReply(this, ctrl, "250 \"%s\" is current directory. \r\n", cwd);
+                } else if (DirectoryExists(arg0, cwd) == true) {
+                    strcpy(cwd, arg0);
+                    FtpReply(this, ctrl, "250 \"%s\" is current directory. \r\n", cwd);
+                } else {
+                    FtpReply(this, ctrl, "553 Requested action not taken. %s\r\n", arg0);
+                }
+                break;
+            }
+
+            case FTP_USER:
+                arg = strtok(nullptr, "");
+                if (!arg)
+                    arg = (char *)"";
+                strcpy(user, arg);
+                if (_stricmp(arg, "xbox") == 0) {
+                    FtpReply(this, ctrl, "331 Password required for %s.\r\n", user);
+                } else {
+                    FtpReply(this, ctrl, "530 Unknown User (%s), Bye.\r\n", user);
+                    running = false;
+                }
+                break;
+
+            case FTP_PASS: // (USER is not required first)
+                arg = strtok(nullptr, "");
+                if (!arg)
+                    arg = (char *)"";
+                if (_stricmp(arg, m_password) == 0) {
+                    FtpReply(this, ctrl, "230 User %s logged in , proceed.\r\n", user);
+                    loggedIn = true;
+                } else {
+                    FtpReply(this, ctrl, "530 Wrong Password.\r\n");
+                    running = false;
+                }
+                break;
+
+            case FTP_QUIT:
+                FtpReply(this, ctrl, "221 Goodbye.\r\n");
+                running = false;
+                break;
+
+            case FTP_FLASHBIOS: // the dashboard shows the file and flashes it (Run, m_message)
+                arg = strtok(nullptr, "");
+                if (arg[1] == ':') {
+                    strcpy(path, arg);
+                } else {
+                    strcpy(path, MakePath(cwd, tmp, cwd));
+                    strcat(path, arg);
+                }
+                strcpy(m_messageText, path);
+                m_message = true;
+                FtpReply(this, ctrl, "221 Goodbye. Now trying to flash %s\r\n", path);
+                running = false;
+                break;
+
+            case FTP_EXECUTE:
+                arg = strtok(nullptr, "");
+                if (!arg) {
+                    FtpReply(this, ctrl, "200 Usage : Execute <filename.xbe>\r\n");
+                    break;
+                }
+                if (arg[1] == ':') {
+                    strcpy(path, arg);
+                } else {
+                    strcpy(path, MakePath(cwd, tmp, cwd));
+                    strcat(path, arg);
+                }
+                for (char *p = path; *p; p++)
+                    if (*p == '/')
+                        *p = '\\';
+                FtpReply(this, ctrl, "221 Goodbye. Now trying to launch %s\r\n", path);
+                LaunchXbe(path);
+                m_quit = true;
+                g_StopNetwork = true;
+                running = false;
+                break;
+
+            case FTP_DUMPMEM: {
+                DWORD address = 0, length;
+                if ((arg = strtok(nullptr, " ")))
+                    address = strtoul(arg, nullptr, 16);
+                if ((arg = strtok(nullptr, " ")) && (length = strtoul(arg, nullptr, 16)))
+                    DumpMem(ctrl, address, length);
+                else
+                    FtpReply(this, ctrl, "200 Usage : Dumpmem <adr> <len>\r\n");
+                break;
+            }
+
+            case FTP_DUMPCDSECTOR: {
+                DWORD sector = 0, count;
+                if ((arg = strtok(nullptr, " ")))
+                    sector = strtol(arg, nullptr, 16);
+                if ((arg = strtok(nullptr, " ")) && (count = strtol(arg, nullptr, 16)))
+                    DumpCdSector(ctrl, sector, count);
+                else
+                    FtpReply(this, ctrl, "200 Usage : DumpCdSector <Sector> <Numbers>\r\n");
+                break;
+            }
+
+            case FTP_DUMPHDDSECTOR: {
+                DWORD sector = 0, count;
+                if ((arg = strtok(nullptr, " ")))
+                    sector = strtol(arg, nullptr, 16);
+                if ((arg = strtok(nullptr, " ")) && (count = strtol(arg, nullptr, 16)))
+                    DumpHddSector(ctrl, sector, count);
+                else
+                    FtpReply(this, ctrl, "200 Usage : DumpHddSector <Sector> <Numbers>\r\n");
+                break;
+            }
+
+            case FTP_HDDINFO:
+                DiskInfo(ctrl, "c:\\");
+                DiskInfo(ctrl, "e:\\");
+                DiskInfo(ctrl, "f:\\");
+                DiskInfo(ctrl, "g:\\");
+                DiskInfo(ctrl, "x:\\");
+                DiskInfo(ctrl, "y:\\");
+                DiskInfo(ctrl, "z:\\");
+                FtpReply(this, ctrl, "200 OK\r\n");
+                break;
+
+            case FTP_FORMATPATH:
+                if ((arg = strtok(nullptr, "")))
+                    FormatPath(ctrl, arg);
+                else
+                    FtpReply(this, ctrl, "200 Usage : Formatpath <\\Device\\Harddisk0\\Partition[1-6]>\r\n");
+                break;
+
+            case FTP_FORMATDRIVE:
+                if ((arg = strtok(nullptr, " "))) {
+                    FormatDrive(ctrl, strtoul(arg, nullptr, 16));
+                } else {
+                    m_formatKey = 0xFFFFFFFF;
+                    m_formatVolume.Length = 0;
+                    FtpReply(this, ctrl, "200 Usage : Formatdrive <key>\r\n");
+                }
+                break;
+
+            case FTP_AUTOCONVNAMES:
+                g_AutoConvNames = true;
+                FtpReply(this, ctrl, "200 OK\r\n");
+                break;
+            }
         }
-    }
+    });
 
     g_FtpUsers--;
-    CloseSocket(ctrl);
-    CloseSocket(data);
+    CrashGuard([&] { CloseSocket(ctrl); }); // catch (...) 0x14B04
+    CrashGuard([&] { CloseSocket(data); }); // catch (...) 0x14B0A
 }

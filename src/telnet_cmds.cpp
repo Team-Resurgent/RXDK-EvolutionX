@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "evox/guard.h"
 #include "evox/system.h"
 #include "evox/telnet.h"
 
@@ -532,35 +533,39 @@ void CTelnetServer::PciDumpDevice(DWORD *address)
 // looked at; reaching 1:1.0 skips to the next bus and function (sic).
 void CTelnetServer::PciScan(bool dump)
 {
-    for (int bus = 0; bus < 0x20; bus++) {
-        for (int dev = 0; dev < 0x20; dev++) {
-            for (int func = 0; func < 8; func++) {
-                DWORD a = (((bus & 0x1F) << 5 | (dev & 0x1F)) << 3 | (func & 7)) << 8;
-                if (a == 0x100) {
-                    func = 8;
-                    continue;
+    bool done = CrashGuard([&] { // catch (...) 0x168C6
+        for (int bus = 0; bus < 0x20; bus++) {
+            for (int dev = 0; dev < 0x20; dev++) {
+                for (int func = 0; func < 8; func++) {
+                    DWORD a = (((bus & 0x1F) << 5 | (dev & 0x1F)) << 3 | (func & 7)) << 8;
+                    if (a == 0x100) {
+                        func = 8;
+                        continue;
+                    }
+                    if (a == 0x10800) {
+                        bus++;
+                        continue;
+                    }
+                    DWORD id = PciRead(a);
+                    if (id == 0xFFFFFFFF)
+                        continue;
+                    if (dump) {
+                        PciDumpDevice(&a);
+                    } else {
+                        Printf("%08lx:%2d:%2d:%d %08lx - ", a, bus, dev, func, id);
+                        a = (a & 0xFFFFFF08) | 8;
+                        if (const char *name = PciClassName(PciRead(a) >> 16))
+                            Printf("%s", name);
+                        Printf("\n\r");
+                    }
+                    if (func == 0 && !(PciRead((a & 0xFFFFFF0C) | 0xC) & 0x800000))
+                        break; // not a multi-function device
                 }
-                if (a == 0x10800) {
-                    bus++;
-                    continue;
-                }
-                DWORD id = PciRead(a);
-                if (id == 0xFFFFFFFF)
-                    continue;
-                if (dump) {
-                    PciDumpDevice(&a);
-                } else {
-                    Printf("%08lx:%2d:%2d:%d %08lx - ", a, bus, dev, func, id);
-                    a = (a & 0xFFFFFF08) | 8;
-                    if (const char *name = PciClassName(PciRead(a) >> 16))
-                        Printf("%s", name);
-                    Printf("\n\r");
-                }
-                if (func == 0 && !(PciRead((a & 0xFFFFFF0C) | 0xC) & 0x800000))
-                    break; // not a multi-function device
             }
         }
-    }
+    });
+    if (!done)
+        Printf("Error :(\n\r");
 }
 
 // 0x16910: PCIDUMP [b:<bus>] [all | <dev> [<func>] [<reg> <value>]]: the list, every function

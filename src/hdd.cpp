@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/info.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
@@ -188,62 +189,68 @@ ANSI_STRING *FDriveDevice() { return &s_DriveF.device; }
 // [MISC] UseFDrive, G: with UseGDrive, X: Y: Z: the cache partitions), the file cache, and SMART
 void InitHardDisk()
 {
-    bool both = true;
-    g_Ini->Lock();
-    g_HasFDrive = g_Ini->GetBool("MISC", "UseFDrive", true);
-    g_HasGDrive = g_Ini->GetBool("MISC", "UseGDrive", true);
-    IoDeleteSymbolicLink(&s_DriveD.letter);
-    Link(s_DriveD);
-    if (PartitionIsFatx(0x55F400))
-        g_LinkStatusE = Link(s_DriveE);
-    else
-        both = false;
-    if (PartitionIsFatx(0x465400))
-        g_LinkStatusC = Link(s_DriveC);
-    else
-        both = false;
-    if (PartitionIsFatx(0xEE8AB0) && g_HasFDrive)
-        g_LinkStatusF = Link(s_DriveF);
-    if (g_HasGDrive)
-        g_LinkStatusG = Link(s_DriveG);
-    if (PartitionIsFatx(0x400))
-        g_LinkStatusX = Link(s_DriveX);
-    if (PartitionIsFatx(0x177400))
-        g_LinkStatusY = Link(s_DriveY);
-    if (PartitionIsFatx(0x2EE400))
-        g_LinkStatusZ = Link(s_DriveZ);
-    if (both)
-        XSetFileCacheSize(0x400000);
+    // catch (...) 0x23ABF: release the lock (the Unlock after the block serves both ways)
+    CrashGuard([&] {
+        bool both = true;
+        g_Ini->Lock();
+        g_HasFDrive = g_Ini->GetBool("MISC", "UseFDrive", true);
+        g_HasGDrive = g_Ini->GetBool("MISC", "UseGDrive", true);
+        IoDeleteSymbolicLink(&s_DriveD.letter);
+        Link(s_DriveD);
+        if (PartitionIsFatx(0x55F400))
+            g_LinkStatusE = Link(s_DriveE);
+        else
+            both = false;
+        if (PartitionIsFatx(0x465400))
+            g_LinkStatusC = Link(s_DriveC);
+        else
+            both = false;
+        if (PartitionIsFatx(0xEE8AB0) && g_HasFDrive)
+            g_LinkStatusF = Link(s_DriveF);
+        if (g_HasGDrive)
+            g_LinkStatusG = Link(s_DriveG);
+        if (PartitionIsFatx(0x400))
+            g_LinkStatusX = Link(s_DriveX);
+        if (PartitionIsFatx(0x177400))
+            g_LinkStatusY = Link(s_DriveY);
+        if (PartitionIsFatx(0x2EE400))
+            g_LinkStatusZ = Link(s_DriveZ);
+        if (both)
+            XSetFileCacheSize(0x400000);
+    });
 #ifdef EVOX_TEST_SCRIPT
     Log("test: E: fatx %d link %08x, C: fatx %d link %08x\n", PartitionIsFatx(0x55F400), g_LinkStatusE,
         PartitionIsFatx(0x465400), g_LinkStatusC);
 #endif
     g_Ini->Unlock();
 
-    g_Ini->Lock();
-    IdentifyDrive();
-    g_EnableSmart = g_Ini->GetBool("MISC", "EnableSMART", false);
-    g_HddTempId = (BYTE)strtol(g_Ini->GetString("MISC", "HDD_Temp_ID", "194"), nullptr, 10);
-    g_SmartOn = false;
-    if (g_EnableSmart) {
-        const BYTE *id = g_DriveIdentify;
-        if ((id[0xA4] & 1) && !(id[0xAA] & 1)) { // supported (word 82) but off (word 85): SMART ENABLE
-            AtaRegisters r = {};
-            r.features = 0xD8;
-            r.lbaMid = 0x4F;
-            r.lbaHigh = 0xC2;
-            r.command = 0xB0;
-            r.hostSendsData = 1;
-            AtaCommand(&r);
-            IdentifyDrive();
-            id = g_DriveIdentify;
+    // catch (...) 0x23AD0: release the lock (likewise)
+    CrashGuard([&] {
+        g_Ini->Lock();
+        IdentifyDrive();
+        g_EnableSmart = g_Ini->GetBool("MISC", "EnableSMART", false);
+        g_HddTempId = (BYTE)strtol(g_Ini->GetString("MISC", "HDD_Temp_ID", "194"), nullptr, 10);
+        g_SmartOn = false;
+        if (g_EnableSmart) {
+            const BYTE *id = g_DriveIdentify;
+            if ((id[0xA4] & 1) && !(id[0xAA] & 1)) { // supported (word 82) but off (word 85): SMART ENABLE
+                AtaRegisters r = {};
+                r.features = 0xD8;
+                r.lbaMid = 0x4F;
+                r.lbaHigh = 0xC2;
+                r.command = 0xB0;
+                r.hostSendsData = 1;
+                AtaCommand(&r);
+                IdentifyDrive();
+                id = g_DriveIdentify;
+            }
+            if (id[0xAA] & 1) {
+                g_SmartOn = true;
+                SmartReadData();
+            }
         }
-        if (id[0xAA] & 1) {
-            g_SmartOn = true;
-            SmartReadData();
-        }
-    }
-    ComputeHddPassword();
+        ComputeHddPassword();
+    });
 #ifdef EVOX_TEST_SCRIPT
     Log("test: identify %d model \"%.40s\" security \"%ls\" smart %d", g_DriveIdentified, g_DriveIdentify + 0x36,
         g_InfoSecurity, g_SmartOn);

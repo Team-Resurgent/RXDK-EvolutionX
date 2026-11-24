@@ -5,8 +5,10 @@
 #ifdef EVOX_TEST_SCRIPT
 #include <xtl.h>
 #include <stdio.h>
+#include <string.h>
 #include "evox/assets.h"
 #include "evox/dash.h"
+#include "evox/guard.h"
 #include "evox/log.h"
 #include "evox/md5.h"
 #include "evox/system.h"
@@ -15,7 +17,7 @@ struct TestStep {
     DWORD frame;
     char op;          // 'A' action, 'B' analog button, 'D' digital button, 'K' typed key, 'L' log,
                       // 'F' dump file, 'M' dump the menus, 'H' file size and MD5, 'S' MD5 per 4 KB, 'I' install
-                      // the in-game reset now
+                      // the in-game reset now, 'C' faults inside crash guards
     int arg;
     const char *text;
 };
@@ -133,6 +135,22 @@ void CEvoxDash::RunTestScript()
             for (int i = 0; i < 8; i++)
                 Log(" %08x", ((const DWORD *)0x8000009E)[i]);
             Log("\n");
+            break;
+        }
+        case 'C': { // faults inside crash guards: a write to address 0, a fault inside the C library,
+                    // nested guards, then a guard that does not fault (the frame chain must be whole)
+            static volatile int *const null = nullptr;
+            void *before, *after;
+            __asm__ volatile("movl %%fs:0, %0" : "=r"(before));
+            Log("test: chain %p\n", before);
+            bool a = CrashGuard([&] { *null = 1; });
+            bool b = CrashGuard([&] { Log("test: strlen %u\n", (unsigned)strlen((const char *)null)); });
+            int inner = -1;
+            bool c = CrashGuard([&] { inner = CrashGuard([&] { *null = 2; }); *null = 3; });
+            bool d = CrashGuard([&] { Log("test: no fault\n"); });
+            __asm__ volatile("movl %%fs:0, %0" : "=r"(after));
+            Log("test %u: guards %d %d %d (inner %d) %d, frame chain %s\n", m_frame, a, b, c, inner, d,
+                before == after ? "same" : "CHANGED");
             break;
         }
         case 'M':

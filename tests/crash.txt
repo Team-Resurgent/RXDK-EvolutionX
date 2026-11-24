@@ -1,0 +1,6 @@
+# The crash guards (include/evox/guard.h): faults on purpose inside guards (a write to address 0,
+# a fault inside strlen, nested guards) and checks the dashboard keeps running with its exception
+# frame chain as it was. Expect "guards 0 0 0 (inner 0) 1, frame chain same" twice.
+100 crash
++60 crash
++60 log still running

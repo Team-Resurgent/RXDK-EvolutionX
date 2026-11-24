@@ -36,6 +36,12 @@ so it can be checked against the disassembly.
 The rebuild links RXDK's D3D8, D3DX8, XGraphics, XNet, XAPI and C runtime in place of the XDK ones
 that the original carried. The output XBE is not packed.
 
+EvoX's `catch (...)` blocks (31 of them: around evox.ini's lock, the servers' threads, skin
+loading, start-up) caught crashes as well as C++ exceptions with the original's compiler, so a
+fault in that code was logged or skipped and the dashboard kept running. RXDK's clang has no
+`__try`/`__except` on its target, so `include/evox/guard.h` registers an exception frame of its own
+for each of them; `tests/crash.txt` checks it by faulting on purpose.
+
 ## Requirements
 
 - **RXDK** (clang, the SDK, `Rxdk.Cli` and `imagebld`) in its default root

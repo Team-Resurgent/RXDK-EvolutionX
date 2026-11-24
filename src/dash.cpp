@@ -7,6 +7,7 @@
 #include "evox/assets.h"
 #include "evox/dash.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
 #include "evox/devices.h"
@@ -161,17 +162,23 @@ HRESULT CEvoxDash::Create()
     m_labels = nullptr;
     InitItems();
 
-    g_Ini->Lock();
-    m_autoLaunchDvd = g_Ini->GetBool("Misc", "AutoLaunchDVD", true);
-    m_autoLaunchAudio = g_Ini->GetBool("Misc", "AutoLaunchAudio", true);
-    m_autoLaunchGames = g_Ini->GetBool("Misc", "AutoLaunchGames", true);
-    if (char *p = g_Ini->GetString("Misc", "DVDPlayer", g_MsDashPath))
-        strcpy(m_dvdPlayer, strtok(p, "\""));
-    if (char *p = g_Ini->GetString("Misc", "AudioPlayer", g_MsDashPath))
-        strcpy(m_audioPlayer, strtok(p, "\""));
-    char *skin = g_Ini->GetString("Misc", "SkinName", "Original");
-    g_Ini->Unlock();
-    LoadSkin(skin); // (the name lives in the INI's work buffer, read after Unlock as in the original)
+    // catch (...) 0x1DD8E: release the lock and fall back to the built-in skin
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        m_autoLaunchDvd = g_Ini->GetBool("Misc", "AutoLaunchDVD", true);
+        m_autoLaunchAudio = g_Ini->GetBool("Misc", "AutoLaunchAudio", true);
+        m_autoLaunchGames = g_Ini->GetBool("Misc", "AutoLaunchGames", true);
+        if (char *p = g_Ini->GetString("Misc", "DVDPlayer", g_MsDashPath))
+            strcpy(m_dvdPlayer, strtok(p, "\""));
+        if (char *p = g_Ini->GetString("Misc", "AudioPlayer", g_MsDashPath))
+            strcpy(m_audioPlayer, strtok(p, "\""));
+        char *skin = g_Ini->GetString("Misc", "SkinName", "Original");
+        g_Ini->Unlock();
+        LoadSkin(skin); // (the name lives in the INI's work buffer, read after Unlock as in the original)
+    })) {
+        g_Ini->Unlock();
+        LoadSkin("Original");
+    }
     return S_OK;
 }
 

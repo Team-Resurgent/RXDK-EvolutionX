@@ -11,6 +11,7 @@
 #include "evox/dash.h"
 #include "evox/flash.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/inifile.h"
 #include "evox/system.h"
 
@@ -153,32 +154,41 @@ static void ReadFlashId(int manufacturerAt, int deviceAt)
 static bool FindFlashType()
 {
     g_FlashKnown = false;
-    g_Ini->Lock();
-    wcscpy(g_FlashType, L"!! Unknown Flash Type !!");
-    for (char *v = g_Ini->GetValue("BIOS", "Flash"); v; v = g_Ini->GetNextValue()) {
-        FlashTokenize(v);
-        if (g_FlashArgv[0][1] != 'x')
-            continue;
-        g_FlashIdOfLine = (WORD)strtoul(g_FlashArgv[0] + 2, nullptr, 16);
-        if (g_FlashIdOfLine != g_FlashId || g_FlashArgc < 2)
-            continue;
-        swprintf(g_FlashType, 0x40, L"Flash Type %hs", g_FlashArgv[1]);
-        if (g_FlashArgc < 3)
-            continue;
-        g_FlashSize = strtoul(g_FlashArgv[2] + 2, nullptr, 16);
-        g_FlashKnown = true;
-        if (g_FlashArgc == 6) {
-            g_FlashErase1 = (BYTE)strtoul(g_FlashArgv[3] + 2, nullptr, 16);
-            g_FlashErase2 = (BYTE)strtoul(g_FlashArgv[4] + 2, nullptr, 16);
-            g_FlashProgram = (BYTE)strtoul(g_FlashArgv[5] + 2, nullptr, 16);
-        } else {
-            g_FlashErase1 = 0x80;
-            g_FlashErase2 = 0x30;
-            g_FlashProgram = 0xA0;
+    // catch (...) 0x212F3: release the lock and fail the identify ("Error reading INI File!!")
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        wcscpy(g_FlashType, L"!! Unknown Flash Type !!");
+        for (char *v = g_Ini->GetValue("BIOS", "Flash"); v; v = g_Ini->GetNextValue()) {
+            FlashTokenize(v);
+            if (g_FlashArgv[0][1] != 'x')
+                continue;
+            g_FlashIdOfLine = (WORD)strtoul(g_FlashArgv[0] + 2, nullptr, 16);
+            if (g_FlashIdOfLine != g_FlashId || g_FlashArgc < 2)
+                continue;
+            swprintf(g_FlashType, 0x40, L"Flash Type %hs", g_FlashArgv[1]);
+            if (g_FlashArgc < 3)
+                continue;
+            g_FlashSize = strtoul(g_FlashArgv[2] + 2, nullptr, 16);
+            g_FlashKnown = true;
+            if (g_FlashArgc == 6) {
+                g_FlashErase1 = (BYTE)strtoul(g_FlashArgv[3] + 2, nullptr, 16);
+                g_FlashErase2 = (BYTE)strtoul(g_FlashArgv[4] + 2, nullptr, 16);
+                g_FlashProgram = (BYTE)strtoul(g_FlashArgv[5] + 2, nullptr, 16);
+            } else {
+                g_FlashErase1 = 0x80;
+                g_FlashErase2 = 0x30;
+                g_FlashProgram = 0xA0;
+            }
+            break;
         }
-        break;
+        g_Ini->Unlock();
+    })) {
+        g_Ini->Unlock();
+        wcscpy(g_FlashLine1, L"Error reading INI File!!");
+        g_FlashKnown = false;
+        g_FlashSize = 1;
+        g_FlashMode = -1;
     }
-    g_Ini->Unlock();
     return g_FlashKnown;
 }
 

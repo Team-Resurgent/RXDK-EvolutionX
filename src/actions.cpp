@@ -9,6 +9,7 @@
 #include "evox/dash.h"
 #include "evox/flash.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/info.h"
 #include "evox/inifile.h"
 #include "evox/system.h"
@@ -30,29 +31,33 @@ void CEvoxDash::OpenItem()
     char section[0x200];
     m_actionLines = 0;
     sprintf(section, "Action_%02d", g_SelectedItem);
-    g_Ini->Lock();
-    if (char *v = g_Ini->GetValue(section, "info")) {
-        if (char *t = strtok(v, "\"")) {
-            swprintf(m_actionTitle, 0x100, L"%hs", t);
-            m_actionText[0] = 0;
-            int n = 0;
-            for (v = g_Ini->GetValue(section, "Warning"); v; v = g_Ini->GetNextValue()) {
-                if ((t = strtok(v, "\""))) {
-                    n += swprintf(m_actionText + n, 0x400 - n, L"%hs\n", t);
-                    m_actionLines++;
+    // catch (...) 0x1CC68: release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        if (char *v = g_Ini->GetValue(section, "info")) {
+            if (char *t = strtok(v, "\"")) {
+                swprintf(m_actionTitle, 0x100, L"%hs", t);
+                m_actionText[0] = 0;
+                int n = 0;
+                for (v = g_Ini->GetValue(section, "Warning"); v; v = g_Ini->GetNextValue()) {
+                    if ((t = strtok(v, "\""))) {
+                        n += swprintf(m_actionText + n, 0x400 - n, L"%hs\n", t);
+                        m_actionLines++;
+                    }
                 }
             }
+            char *v2 = g_Ini->GetValue(section, "progress");
+            if (char *t; v2 && (t = strtok(v2, "\"")))
+                swprintf(m_actionProgress, 0x100, L"%hs", t);
+        } else {
+            wcscpy(m_actionTitle, L"Action Error");
+            swprintf(m_actionText, 0x400, L"Error in action number\nAction : %d\n\n\n", g_SelectedItem);
+            m_actionLines = 3;
+            g_SelectedItem = -1;
         }
-        char *v2 = g_Ini->GetValue(section, "progress");
-        if (char *t; v2 && (t = strtok(v2, "\"")))
-            swprintf(m_actionProgress, 0x100, L"%hs", t);
-    } else {
-        wcscpy(m_actionTitle, L"Action Error");
-        swprintf(m_actionText, 0x400, L"Error in action number\nAction : %d\n\n\n", g_SelectedItem);
-        m_actionLines = 3;
-        g_SelectedItem = -1;
-    }
-    g_Ini->Unlock();
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 }
 
 // (alpha * 0.5) << 24 | fill and (alpha * 0.2) << 24 | border, as the boxes use them
@@ -182,127 +187,131 @@ static DWORD WINAPI ActionThread(LPVOID)
     bool flash = false;
     sprintf(section, "Action_%02d", g_SelectedItem);
     ANSI_STRING disk = {0x1C, 0x1D, (PCHAR) "\\Device\\Harddisk0\\partition0"};
-    g_Ini->Lock();
-    g_ActionLog = nullptr;
-    if (FlashTokenize(g_Ini->GetValue(section, "LogFile")))
-        g_ActionLog = fopen(g_FlashArgv[0], "wt");
-    if (g_ActionLog)
-        fprintf(g_ActionLog, "%s\n", section);
-    for (char *line = g_Ini->FindSection(section); FlashTokenize(line), line; line = g_Ini->NextLine()) {
-        char **argv = g_FlashArgv;
-        if (argv[0][0] == '#')
-            continue;
-        if (g_ActionLog) {
-            for (int i = 0; i < g_FlashArgc; i++)
-                fprintf(g_ActionLog, "%s ", argv[i]);
-            fprintf(g_ActionLog, "\n");
-        }
-
-        // configsector <file>: the file's first 512 KB over the start of the disk
-        if (_stricmp(argv[0], "configsector") == 0) {
-            StepPath(path, argv[1]);
-            if (g_ActionLog)
-                fprintf(g_ActionLog, "DoConfigsector %s\n", path);
-            swprintf(g_ProgressText, 0x200, L"Writing Config Sector");
-            if (FILE *f = fopen(path, "rb")) {
-                BYTE *buf = (BYTE *)VirtualAlloc(nullptr, 0x80000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-                OBJECT_ATTRIBUTES oa = {nullptr, &disk, OBJ_CASE_INSENSITIVE};
-                IO_STATUS_BLOCK iosb;
-                HANDLE h = INVALID_HANDLE_VALUE; // (not initialised in the original)
-                NtOpenFile(&h, GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE, &oa, &iosb,
-                           FILE_SHARE_READ | FILE_SHARE_WRITE, FILE_SYNCHRONOUS_IO_ALERT);
-                if (h != INVALID_HANDLE_VALUE) {
-                    LONG high = 0;
-                    SetFilePointer(h, 0, &high, FILE_BEGIN);
-                    fread(buf, 1, 0x80000, f);
-                    DWORD written;
-                    WriteFile(h, buf, 0x80000, &written, nullptr);
-                    CloseHandle(h);
-                }
-                fclose(f);
-                VirtualFree(buf, 0, MEM_RELEASE);
+    // catch (...) 0x20EAC: release the lock, then close the log as usual
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        g_ActionLog = nullptr;
+        if (FlashTokenize(g_Ini->GetValue(section, "LogFile")))
+            g_ActionLog = fopen(g_FlashArgv[0], "wt");
+        if (g_ActionLog)
+            fprintf(g_ActionLog, "%s\n", section);
+        for (char *line = g_Ini->FindSection(section); FlashTokenize(line), line; line = g_Ini->NextLine()) {
+            char **argv = g_FlashArgv;
+            if (argv[0][0] == '#')
+                continue;
+            if (g_ActionLog) {
+                for (int i = 0; i < g_FlashArgc; i++)
+                    fprintf(g_ActionLog, "%s ", argv[i]);
+                fprintf(g_ActionLog, "\n");
             }
-        }
 
-        // format <drive letter>
-        if (_stricmp(argv[0], "format") == 0) {
-            swprintf(g_ProgressText, 0x200, L"Formating %hs", argv[1]);
-            switch (argv[1][0]) {
-            case 'C': case 'c': strcpy(path, "\\Device\\Harddisk0\\Partition2"); break;
-            case 'E': case 'e': strcpy(path, "\\Device\\Harddisk0\\Partition1"); break;
-            case 'F': case 'f': strcpy(path, "\\Device\\Harddisk0\\Partition6"); break;
-            case 'G': case 'g': strcpy(path, "\\Device\\Harddisk0\\Partition7"); break;
-            case 'X': case 'x': strcpy(path, "\\Device\\Harddisk0\\Partition3"); break;
-            case 'Y': case 'y': strcpy(path, "\\Device\\Harddisk0\\Partition4"); break;
-            case 'Z': case 'z': strcpy(path, "\\Device\\Harddisk0\\Partition5"); break;
-            }
-            if (g_ActionLog)
-                fprintf(g_ActionLog, "DoFormat %s\n", path);
-            ANSI_STRING volume;
-            RtlInitAnsiString(&volume, path);
-            XapiFormatFATVolume((POBJECT_STRING)&volume);
-            XapiValidateDiskPartition((POBJECT_STRING)&volume);
-            RelinkDrives();
-        }
-
-        // rename <from> <to>
-        if (_stricmp(argv[0], "rename") == 0) {
-            if (g_ActionLog)
-                fprintf(g_ActionLog, "MoveFile %s -> %s\n", argv[1], argv[2]);
-            if (MoveFile(argv[1], argv[2])) {
+            // configsector <file>: the file's first 512 KB over the start of the disk
+            if (_stricmp(argv[0], "configsector") == 0) {
+                StepPath(path, argv[1]);
                 if (g_ActionLog)
-                    fprintf(g_ActionLog, "OK\n");
-            } else if (g_ActionLog) {
-                fprintf(g_ActionLog, "Error : %d\n", (int)GetLastError());
+                    fprintf(g_ActionLog, "DoConfigsector %s\n", path);
+                swprintf(g_ProgressText, 0x200, L"Writing Config Sector");
+                if (FILE *f = fopen(path, "rb")) {
+                    BYTE *buf = (BYTE *)VirtualAlloc(nullptr, 0x80000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+                    OBJECT_ATTRIBUTES oa = {nullptr, &disk, OBJ_CASE_INSENSITIVE};
+                    IO_STATUS_BLOCK iosb;
+                    HANDLE h = INVALID_HANDLE_VALUE; // (not initialised in the original)
+                    NtOpenFile(&h, GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE, &oa, &iosb,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE, FILE_SYNCHRONOUS_IO_ALERT);
+                    if (h != INVALID_HANDLE_VALUE) {
+                        LONG high = 0;
+                        SetFilePointer(h, 0, &high, FILE_BEGIN);
+                        fread(buf, 1, 0x80000, f);
+                        DWORD written;
+                        WriteFile(h, buf, 0x80000, &written, nullptr);
+                        CloseHandle(h);
+                    }
+                    fclose(f);
+                    VirtualFree(buf, 0, MEM_RELEASE);
+                }
             }
-        }
 
-        // copy <from> <to>: a folder when <from> ends in '\'
-        if (_stricmp(argv[0], "copy") == 0) {
-            StepPath(path, argv[1]);
-            StepPath(path2, argv[2]);
-            if (g_ActionLog)
-                fprintf(g_ActionLog, "Copy %s -> %s\n", path, path2);
-            if (argv[1][strlen(argv[1]) - 1] == '\\') {
-                CopyFolder(path, path2);
-            } else {
-                swprintf(g_ProgressText, 0x200, L"Copying %hs", path);
-                if (CopyFile(path, path2, FALSE)) {
+            // format <drive letter>
+            if (_stricmp(argv[0], "format") == 0) {
+                swprintf(g_ProgressText, 0x200, L"Formating %hs", argv[1]);
+                switch (argv[1][0]) {
+                case 'C': case 'c': strcpy(path, "\\Device\\Harddisk0\\Partition2"); break;
+                case 'E': case 'e': strcpy(path, "\\Device\\Harddisk0\\Partition1"); break;
+                case 'F': case 'f': strcpy(path, "\\Device\\Harddisk0\\Partition6"); break;
+                case 'G': case 'g': strcpy(path, "\\Device\\Harddisk0\\Partition7"); break;
+                case 'X': case 'x': strcpy(path, "\\Device\\Harddisk0\\Partition3"); break;
+                case 'Y': case 'y': strcpy(path, "\\Device\\Harddisk0\\Partition4"); break;
+                case 'Z': case 'z': strcpy(path, "\\Device\\Harddisk0\\Partition5"); break;
+                }
+                if (g_ActionLog)
+                    fprintf(g_ActionLog, "DoFormat %s\n", path);
+                ANSI_STRING volume;
+                RtlInitAnsiString(&volume, path);
+                XapiFormatFATVolume((POBJECT_STRING)&volume);
+                XapiValidateDiskPartition((POBJECT_STRING)&volume);
+                RelinkDrives();
+            }
+
+            // rename <from> <to>
+            if (_stricmp(argv[0], "rename") == 0) {
+                if (g_ActionLog)
+                    fprintf(g_ActionLog, "MoveFile %s -> %s\n", argv[1], argv[2]);
+                if (MoveFile(argv[1], argv[2])) {
                     if (g_ActionLog)
                         fprintf(g_ActionLog, "OK\n");
                 } else if (g_ActionLog) {
                     fprintf(g_ActionLog, "Error : %d\n", (int)GetLastError());
                 }
             }
-        }
 
-        // flashbios <file>: the "Flash BIOS" box after the steps
-        if (_stricmp(argv[0], "flashbios") == 0) {
-            StepPath(path, argv[1]);
-            strcpy(g_ActionFlashFile, path);
-            flash = true;
-        }
+            // copy <from> <to>: a folder when <from> ends in '\'
+            if (_stricmp(argv[0], "copy") == 0) {
+                StepPath(path, argv[1]);
+                StepPath(path2, argv[2]);
+                if (g_ActionLog)
+                    fprintf(g_ActionLog, "Copy %s -> %s\n", path, path2);
+                if (argv[1][strlen(argv[1]) - 1] == '\\') {
+                    CopyFolder(path, path2);
+                } else {
+                    swprintf(g_ProgressText, 0x200, L"Copying %hs", path);
+                    if (CopyFile(path, path2, FALSE)) {
+                        if (g_ActionLog)
+                            fprintf(g_ActionLog, "OK\n");
+                    } else if (g_ActionLog) {
+                        fprintf(g_ActionLog, "Error : %d\n", (int)GetLastError());
+                    }
+                }
+            }
 
-        // the drive's lock (when its password is known)
-        if (_stricmp(argv[0], "hddlockdisable") == 0 && !HddPasswordMissing()) {
-            AtaSecurityCommand(0xF6, 0, g_HddPassword); // SECURITY DISABLE PASSWORD (user)
-            IdentifyDrive();
+            // flashbios <file>: the "Flash BIOS" box after the steps
+            if (_stricmp(argv[0], "flashbios") == 0) {
+                StepPath(path, argv[1]);
+                strcpy(g_ActionFlashFile, path);
+                flash = true;
+            }
+
+            // the drive's lock (when its password is known)
+            if (_stricmp(argv[0], "hddlockdisable") == 0 && !HddPasswordMissing()) {
+                AtaSecurityCommand(0xF6, 0, g_HddPassword); // SECURITY DISABLE PASSWORD (user)
+                IdentifyDrive();
+            }
+            if (_stricmp(argv[0], "hddlockenable") == 0 && !HddPasswordMissing()) {
+                BYTE master[0x20];
+                MasterPassword(master);
+                AtaSecurityCommand(0xF1, 1, master);        // SECURITY SET PASSWORD (master)
+                AtaSecurityCommand(0xF1, 0, g_HddPassword); // and the user password
+                IdentifyDrive();
+            }
+            if (_stricmp(argv[0], "hddmasterdisable") == 0 && !HddPasswordMissing()) {
+                BYTE master[0x20];
+                MasterPassword(master);
+                AtaSecurityCommand(0xF6, 1, master);        // SECURITY DISABLE PASSWORD (master)
+                IdentifyDrive();
+            }
         }
-        if (_stricmp(argv[0], "hddlockenable") == 0 && !HddPasswordMissing()) {
-            BYTE master[0x20];
-            MasterPassword(master);
-            AtaSecurityCommand(0xF1, 1, master);        // SECURITY SET PASSWORD (master)
-            AtaSecurityCommand(0xF1, 0, g_HddPassword); // and the user password
-            IdentifyDrive();
-        }
-        if (_stricmp(argv[0], "hddmasterdisable") == 0 && !HddPasswordMissing()) {
-            BYTE master[0x20];
-            MasterPassword(master);
-            AtaSecurityCommand(0xF6, 1, master);        // SECURITY DISABLE PASSWORD (master)
-            IdentifyDrive();
-        }
-    }
-    g_Ini->Unlock();
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
     if (g_ActionLog) {
         fprintf(g_ActionLog, "End of Log\n");
         fclose(g_ActionLog);

@@ -5,6 +5,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include "evox/guard.h"
+#include "evox/log.h"
 #include "evox/telnet.h"
 
 #pragma clang diagnostic ignored "-Winvalid-offsetof" // (the layout checks below are on purpose)
@@ -59,7 +61,8 @@ static const struct {
 static DWORD WINAPI TelnetThread(LPVOID server)
 {
     g_NetThreads = g_NetThreads + 1;
-    ((CTelnetServer *)server)->Serve();
+    if (!CrashGuard([&] { ((CTelnetServer *)server)->Serve(); })) // catch (...) 0x1737B
+        Log("telnet : nTelnetThread Error\n\r");
     g_NetThreads = g_NetThreads - 1;
     return 0;
 }
@@ -148,34 +151,36 @@ static bool Tokenize(char *line)
 // 0x16B90
 void CTelnetServer::Dispatch(char *line)
 {
-    if (!Tokenize(line))
-        return;
-    for (const auto &c : s_Commands) {
-        if (_stricmp(c.name, g_TelnetArgv[0]) != 0)
-            continue;
-        switch (c.id) {
-        case CMD_DIR: Dir(); break;
-        case CMD_MEMDUMP: MemDump(); break;
-        case CMD_CDSECTORDUMP: CdSectorDump(); break;
-        case CMD_HDDSECTORDUMP: HddSectorDump(); break;
-        case CMD_EXIT: m_quit = true; break;
-        case CMD_PCIDUMP: PciDump(); break;
-        case CMD_IODUMP: IoDump(); break;
-        case CMD_O: IoOut(); break;
-        case CMD_SAVEMEM: SaveMem(); break;
-        case CMD_TEST2: Test2(); break;
-        case CMD_SMBUSDUMP: SmbusDump(); break;
-        case CMD_SMART: Smart(); break;
-        case CMD_HDDINFO: HddInfo(); break;
-        case CMD_HDDLOCKDISABLE: HddLockDisable(); break;
-        case CMD_HDDLOCKENABLE: HddLockEnable(); break;
-        case CMD_HDDMASTERDISABLE: HddMasterDisable(); break;
-        case CMD_HDDLOCKDISABLEXBOXHDKEY: HddLockDisableXboxHdKey(); break;
-        case CMD_HDDLOCKDISABLEPASSWORD: HddLockDisablePassword(); break;
+    CrashGuard([&] { // catch (...) 0x16CE6: a fault in a command ends it
+        if (!Tokenize(line))
+            return;
+        for (const auto &c : s_Commands) {
+            if (_stricmp(c.name, g_TelnetArgv[0]) != 0)
+                continue;
+            switch (c.id) {
+            case CMD_DIR: Dir(); break;
+            case CMD_MEMDUMP: MemDump(); break;
+            case CMD_CDSECTORDUMP: CdSectorDump(); break;
+            case CMD_HDDSECTORDUMP: HddSectorDump(); break;
+            case CMD_EXIT: m_quit = true; break;
+            case CMD_PCIDUMP: PciDump(); break;
+            case CMD_IODUMP: IoDump(); break;
+            case CMD_O: IoOut(); break;
+            case CMD_SAVEMEM: SaveMem(); break;
+            case CMD_TEST2: Test2(); break;
+            case CMD_SMBUSDUMP: SmbusDump(); break;
+            case CMD_SMART: Smart(); break;
+            case CMD_HDDINFO: HddInfo(); break;
+            case CMD_HDDLOCKDISABLE: HddLockDisable(); break;
+            case CMD_HDDLOCKENABLE: HddLockEnable(); break;
+            case CMD_HDDMASTERDISABLE: HddMasterDisable(); break;
+            case CMD_HDDLOCKDISABLEXBOXHDKEY: HddLockDisableXboxHdKey(); break;
+            case CMD_HDDLOCKDISABLEPASSWORD: HddLockDisablePassword(); break;
+            }
+            return;
         }
-        return;
-    }
-    Printf("Unknown Command \"%s\"\r\n", g_TelnetArgv[0]);
+        Printf("Unknown Command \"%s\"\r\n", g_TelnetArgv[0]);
+    });
 }
 
 // up / down through the history (part of Session): the next non-empty line, shown for editing

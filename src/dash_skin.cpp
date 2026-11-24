@@ -8,6 +8,7 @@
 #include <string.h>
 #include "evox/dash.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/inifile.h"
 #include "evox/info.h"
 #include "evox/system.h"
@@ -30,18 +31,22 @@ static void FullScreenQuad(SkinVertex *v, float uMax, float vMax)
     v[3] = {F32(0xBF000000), F32(0x43EFC000), 0, 0, 0, vMax};    // (-0.5, 479.5)
 }
 
-// "q:" + the first quoted part of [skin] key; false without the key
+// "q:" + the first quoted part of [skin] key; false without the key (or on a fault reading it)
 static bool SkinPicturePath(const char *key, char *path)
 {
     bool found = false;
-    g_Ini->Lock();
-    if (char *v = g_Ini->GetValue(g_SkinSection, key))
-        if (char *p = strtok(v, "\"")) {
-            strcpy(path, "q:");
-            strcat(path, p);
-            found = true;
-        }
-    g_Ini->Unlock();
+    // catch (...) 0x1764B (Main), 0x179DB (Launch): release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        if (char *v = g_Ini->GetValue(g_SkinSection, key))
+            if (char *p = strtok(v, "\"")) {
+                strcpy(path, "q:");
+                strcat(path, p);
+                found = true;
+            }
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
     return found;
 }
 
@@ -100,37 +105,41 @@ void CEvoxDash::LoadLaunchPicture()
 void CEvoxDash::LoadLabels()
 {
     m_labels = nullptr;
-    g_Ini->Lock();
-    for (char *v = g_Ini->GetValue(g_SkinSection, "text"); v; v = g_Ini->GetNextValue()) {
-        char *t;
-        if (!(t = strtok(v, ",")))
-            continue;
-        float x = (float)atof(t);
-        if (!(t = strtok(nullptr, ",")))
-            continue;
-        float y = (float)atof(t);
-        if (!(t = strtok(nullptr, ",")))
-            continue;
-        float alpha = (float)atof(t);
-        if (!(t = strtok(nullptr, ",")))
-            continue;
-        DWORD rgb = t[1] == 'x' ? strtoul(t + 2, nullptr, 16) : strtoul(t, nullptr, 10);
-        if (!(t = strtok(nullptr, ",")))
-            continue;
-        DWORD flags = strtoul(t, nullptr, 10);
-        if (!(t = strtok(nullptr, ",")) || !(t = strtok(t, "\"")))
-            continue;
-        SkinLabel *l = (SkinLabel *)operator new(sizeof(SkinLabel));
-        l->next = m_labels;
-        m_labels = l;
-        l->alpha = alpha;
-        l->x = x;
-        l->y = y;
-        l->rgb = rgb;
-        l->flags = flags;
-        swprintf(l->text, 0x200, L"%hs", t);
-    }
-    g_Ini->Unlock();
+    // catch (...) 0x1CA37: release the lock, keeping the labels read so far
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        for (char *v = g_Ini->GetValue(g_SkinSection, "text"); v; v = g_Ini->GetNextValue()) {
+            char *t;
+            if (!(t = strtok(v, ",")))
+                continue;
+            float x = (float)atof(t);
+            if (!(t = strtok(nullptr, ",")))
+                continue;
+            float y = (float)atof(t);
+            if (!(t = strtok(nullptr, ",")))
+                continue;
+            float alpha = (float)atof(t);
+            if (!(t = strtok(nullptr, ",")))
+                continue;
+            DWORD rgb = t[1] == 'x' ? strtoul(t + 2, nullptr, 16) : strtoul(t, nullptr, 10);
+            if (!(t = strtok(nullptr, ",")))
+                continue;
+            DWORD flags = strtoul(t, nullptr, 10);
+            if (!(t = strtok(nullptr, ",")) || !(t = strtok(t, "\"")))
+                continue;
+            SkinLabel *l = (SkinLabel *)operator new(sizeof(SkinLabel));
+            l->next = m_labels;
+            m_labels = l;
+            l->alpha = alpha;
+            l->x = x;
+            l->y = y;
+            l->rgb = rgb;
+            l->flags = flags;
+            swprintf(l->text, 0x200, L"%hs", t);
+        }
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 }
 
 // "0x......" colours; the second character is forced to 'x' first, as in the original
@@ -154,30 +163,34 @@ void CEvoxDash::LoadSkin(const char *name)
     m_fadeTexture = nullptr;
     m_bgTexture = nullptr;
 
-    g_Ini->Lock();
-    sprintf(g_SkinSection, "Skin_%s", skin);
-    m_logoType = 0;
-    char *logo = g_Ini->GetValue(g_SkinSection, "LogoType");
-    m_drawLogo = true;
-    if (logo) {
-        m_logoType = strtol(logo, nullptr, 10);
-        if (m_logoType == 0x45766F58) { // LogoType=1165389656 ('XovE'): no logo
-            m_drawLogo = false;
-            m_logoType = 0;
-        } else if (m_logoType >= 5) {
-            m_logoType = 0;
+    // catch (...) 0x1CEE3: release the lock and load the pictures and labels all the same
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        sprintf(g_SkinSection, "Skin_%s", skin);
+        m_logoType = 0;
+        char *logo = g_Ini->GetValue(g_SkinSection, "LogoType");
+        m_drawLogo = true;
+        if (logo) {
+            m_logoType = strtol(logo, nullptr, 10);
+            if (m_logoType == 0x45766F58) { // LogoType=1165389656 ('XovE'): no logo
+                m_drawLogo = false;
+                m_logoType = 0;
+            } else if (m_logoType >= 5) {
+                m_logoType = 0;
+            }
+        } else { // no such skin (no LogoType): the built-in one
+            strcpy(g_SkinSection, "Skin_Original");
+            strcpy(skin, "Original");
         }
-    } else { // no such skin (no LogoType): the built-in one
-        strcpy(g_SkinSection, "Skin_Original");
-        strcpy(skin, "Original");
-    }
-    m_barColor1 = SkinColour("BarColor1", "0x000080");
-    m_barColor2 = SkinColour("BarColor2", "0x808080");
-    m_barAlpha = (float)atof(g_Ini->GetString(g_SkinSection, "BarAlpha", "0.5"));
-    m_menuColour[0] = SkinColour("MenuColor1", "0xc0c0c0");
-    m_menuColour[1] = SkinColour("MenuColor2", "0xc00000");
-    m_menuColour[2] = SkinColour("MenuColor3", "0x00c000");
-    g_Ini->Unlock();
+        m_barColor1 = SkinColour("BarColor1", "0x000080");
+        m_barColor2 = SkinColour("BarColor2", "0x808080");
+        m_barAlpha = (float)atof(g_Ini->GetString(g_SkinSection, "BarAlpha", "0.5"));
+        m_menuColour[0] = SkinColour("MenuColor1", "0xc0c0c0");
+        m_menuColour[1] = SkinColour("MenuColor2", "0xc00000");
+        m_menuColour[2] = SkinColour("MenuColor3", "0x00c000");
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 
     for (SkinLabel *l = m_labels, *next; l; l = next) {
         next = l->next;
@@ -188,12 +201,16 @@ void CEvoxDash::LoadSkin(const char *name)
     LoadLaunchPicture();
     LoadLabels();
 
-    g_Ini->Lock();
-    if (_stricmp(g_Ini->GetString("Misc", "SkinName", "Original"), skin) != 0) {
-        g_Ini->SetValue("Misc", "SkinName", skin);
-        g_Ini->Save();
-    }
-    g_Ini->Unlock();
+    // catch (...) 0x1CFC9: release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        if (_stricmp(g_Ini->GetString("Misc", "SkinName", "Original"), skin) != 0) {
+            g_Ini->SetValue("Misc", "SkinName", skin);
+            g_Ini->Save();
+        }
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 }
 
 // 0x1D680: the menus. The folders q:\bios, q:\skin and q:\trainers fill their menus; the main
@@ -210,34 +227,41 @@ void CEvoxDash::InitItems()
     if (g_UseItems)
         m_itemsFile = fopen("q:\\items.txt", "wt");
 
-    g_Ini->Lock();
-    if ((m_menuLine = g_Ini->FindSection("Menu"))) {
-        for (; m_menuLine; m_menuLine = g_Ini->NextLine()) {
-            strcpy(g_MenuLine, m_menuLine);
-            PrepareMenuLine(g_MenuLine);
-            if (g_MenuLine[0] == '#' || g_MenuLine[0] == ';')
-                continue;
-            if (char *word = strtok(g_MenuLine, " ")) {
-                strlwr(word);
-                if (_stricmp(word, "section") == 0)
-                    ParseMenuSection(&g_MenuMain);
+    // catch (...) 0x1D8F3: release the lock and close items.txt
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        if ((m_menuLine = g_Ini->FindSection("Menu"))) {
+            for (; m_menuLine; m_menuLine = g_Ini->NextLine()) {
+                strcpy(g_MenuLine, m_menuLine);
+                PrepareMenuLine(g_MenuLine);
+                if (g_MenuLine[0] == '#' || g_MenuLine[0] == ';')
+                    continue;
+                if (char *word = strtok(g_MenuLine, " ")) {
+                    strlwr(word);
+                    if (_stricmp(word, "section") == 0)
+                        ParseMenuSection(&g_MenuMain);
+                }
             }
+        } else {
+            if (g_MenuBios.count) // BIOS images found
+                g_MenuBios.AddItem(0, 1, -1, L"", nullptr);
+            g_MenuMain.AddItem(1, 1, 3, L"MS Dashboard", nullptr);
+            g_MenuMain.AddItem(1, 1, 5, L"Reboot", nullptr);
+            g_MenuMain.AddItem(1, 1, 10, L"Power Off", nullptr);
+            g_MenuMain.AddItem(1, 1, 9, L"Settings", nullptr);
+            g_MenuMain.AddItem(1, 1, 11, L"Backup", nullptr);
+            if (g_MenuBios.count)
+                g_MenuMain.AddItem(1, 1, 1, L"Flash BIOS", nullptr);
         }
-    } else {
-        if (g_MenuBios.count) // BIOS images found
-            g_MenuBios.AddItem(0, 1, -1, L"", nullptr);
-        g_MenuMain.AddItem(1, 1, 3, L"MS Dashboard", nullptr);
-        g_MenuMain.AddItem(1, 1, 5, L"Reboot", nullptr);
-        g_MenuMain.AddItem(1, 1, 10, L"Power Off", nullptr);
-        g_MenuMain.AddItem(1, 1, 9, L"Settings", nullptr);
-        g_MenuMain.AddItem(1, 1, 11, L"Backup", nullptr);
-        if (g_MenuBios.count)
-            g_MenuMain.AddItem(1, 1, 1, L"Flash BIOS", nullptr);
+        g_MenuMain.AddItem(0, 1, -1, L"", nullptr); // the end marker
+        if (m_itemsFile)
+            fclose(m_itemsFile);
+        g_Ini->Unlock();
+    })) {
+        g_Ini->Unlock();
+        if (m_itemsFile)
+            fclose(m_itemsFile);
     }
-    g_MenuMain.AddItem(0, 1, -1, L"", nullptr); // the end marker
-    if (m_itemsFile)
-        fclose(m_itemsFile);
-    g_Ini->Unlock();
 
     g_MenuMain.ResetSelection();
     g_Menu47BC60.ResetSelection();

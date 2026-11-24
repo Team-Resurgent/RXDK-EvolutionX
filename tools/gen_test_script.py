@@ -16,6 +16,7 @@
 #   hash <path>           the file's size and MD5 in the log
 #   blocks <path>         the MD5 of each 4 KB block of the file in the log
 #   igr                   install the in-game reset now (patches the kernel: sandbox only)
+#   crash                 faults on purpose inside crash guards (include/evox/guard.h)
 import re, sys
 
 ANALOG = {'a': 0, 'b': 1, 'x': 2, 'y': 3, 'black': 4, 'white': 5, 'left_trigger': 6, 'right_trigger': 7}
@@ -55,6 +56,8 @@ for n, line in enumerate(open(sys.argv[1]), 1):
             steps.append((f, 'S', 0, rest.strip()))
         elif name == 'igr':
             steps.append((f, 'I', 0, None))
+        elif name == 'crash':
+            steps.append((f, 'C', 0, None))
         elif name == 'menus':
             steps.append((f, 'M', 0, None))
         elif name == 'dump':

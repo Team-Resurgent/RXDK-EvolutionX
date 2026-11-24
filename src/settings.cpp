@@ -7,6 +7,7 @@
 #include <wchar.h>
 #include "evox/dash.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/info.h"
 #include "evox/inifile.h"
 #include "evox/system.h"
@@ -123,110 +124,114 @@ struct TableBuilder {
 void CEvoxDash::OpenSettings()
 {
     memset(g_Settings, 0, sizeof g_Settings);
-    g_Ini->Lock();
-    TableBuilder t;
+    // catch (...) 0x1B11E: release the lock (the table and its count stay as they were)
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        TableBuilder t;
 
-    t.Header(L"Network");
-    t.Info(L"Type", g_InfoNetType);
-    t.Info(L"IP", g_VarIP);
-    t.Info(L"Line Status", g_InfoLineStatus);
-    t.Info(L"Ethernet MAC address", g_InfoMac);
-    t.Ini(L"Setup Network", SETTING_YESNO, s_SetupNetwork, "Network", "SetupNetwork", "No");
-    t.Ini(L"Use Static IP", SETTING_YESNO, s_StaticIP, "Network", "StaticIP", "No");
-    t.Ini(L"IP", SETTING_ADDRESS, s_Ip, "Network", "Ip", "192.168.0.2");
-    t.Ini(L"Subnetmask", SETTING_ADDRESS, s_Subnetmask, "Network", "Subnetmask", "255.255.255.0");
-    t.Ini(L"DefaultGateway", SETTING_ADDRESS, s_Gateway, "Network", "Defaultgateway", "192.168.0.1");
-    t.Ini(L"DNS", SETTING_ADDRESS, s_Dns1, "Network", "DNS1", "0.0.0.0");
-    t.Ini(L"DNS", SETTING_ADDRESS, s_Dns2, "Network", "DNS2", "0.0.0.0");
-    t.Ini(L"Setup Delay", SETTING_ADDRESS, s_SetupDelay, "Network", "SetupDelay", "0");
-    t.Ini(L"Skip Setup If No Link", SETTING_YESNO, s_SkipIfNoLink, "Network", "SkipIfNoLink", "No");
+        t.Header(L"Network");
+        t.Info(L"Type", g_InfoNetType);
+        t.Info(L"IP", g_VarIP);
+        t.Info(L"Line Status", g_InfoLineStatus);
+        t.Info(L"Ethernet MAC address", g_InfoMac);
+        t.Ini(L"Setup Network", SETTING_YESNO, s_SetupNetwork, "Network", "SetupNetwork", "No");
+        t.Ini(L"Use Static IP", SETTING_YESNO, s_StaticIP, "Network", "StaticIP", "No");
+        t.Ini(L"IP", SETTING_ADDRESS, s_Ip, "Network", "Ip", "192.168.0.2");
+        t.Ini(L"Subnetmask", SETTING_ADDRESS, s_Subnetmask, "Network", "Subnetmask", "255.255.255.0");
+        t.Ini(L"DefaultGateway", SETTING_ADDRESS, s_Gateway, "Network", "Defaultgateway", "192.168.0.1");
+        t.Ini(L"DNS", SETTING_ADDRESS, s_Dns1, "Network", "DNS1", "0.0.0.0");
+        t.Ini(L"DNS", SETTING_ADDRESS, s_Dns2, "Network", "DNS2", "0.0.0.0");
+        t.Ini(L"Setup Delay", SETTING_ADDRESS, s_SetupDelay, "Network", "SetupDelay", "0");
+        t.Ini(L"Skip Setup If No Link", SETTING_YESNO, s_SkipIfNoLink, "Network", "SkipIfNoLink", "No");
 
-    t.Header(L"Harddisk");
-    t.Info(L"Security", g_InfoSecurity);
-    t.Info(L"Free Space on C:", g_VarSpaceC);
-    t.Info(L"Free Space on E:", g_VarSpaceE);
-    if (g_HasFDrive)
-        t.Info(L"Free Space on F:", g_VarSpaceF);
-    if (g_HasGDrive)
-        t.Info(L"Free Space on G:", g_VarSpaceG);
-    t.Info(L"Free Space on X:", g_VarSpaceX);
-    t.Info(L"Free Space on Y:", g_VarSpaceY);
-    t.Info(L"Free Space on Z:", g_VarSpaceZ);
+        t.Header(L"Harddisk");
+        t.Info(L"Security", g_InfoSecurity);
+        t.Info(L"Free Space on C:", g_VarSpaceC);
+        t.Info(L"Free Space on E:", g_VarSpaceE);
+        if (g_HasFDrive)
+            t.Info(L"Free Space on F:", g_VarSpaceF);
+        if (g_HasGDrive)
+            t.Info(L"Free Space on G:", g_VarSpaceG);
+        t.Info(L"Free Space on X:", g_VarSpaceX);
+        t.Info(L"Free Space on Y:", g_VarSpaceY);
+        t.Info(L"Free Space on Z:", g_VarSpaceZ);
 
-    t.Header(L"BIOS");
-    t.Info(L"BIOS Version", g_VarBiosVer);
-    t.Info(L"Kernel Version", g_VarKernelVer);
-    t.Info(L"Xbox Hardware Info", g_InfoHardware);
+        t.Header(L"BIOS");
+        t.Info(L"BIOS Version", g_VarBiosVer);
+        t.Info(L"Kernel Version", g_VarKernelVer);
+        t.Info(L"Xbox Hardware Info", g_InfoHardware);
 
-    t.Header(L"FTP");
-    t.Ini(L"Enable", SETTING_YESNO, s_FtpEnable, "FTP", "Enable", "Yes");
-    t.Ini(L"Password", SETTING_TEXT, s_FtpPassword, "FTP", "Password", "xbox");
-    t.Header(L"Telnet");
-    t.Ini(L"Enable", SETTING_YESNO, s_TelnetEnable, "TELNET", "Enable", "Yes");
-    t.Header(L"RDTools");
-    t.Ini(L"Enable", SETTING_YESNO, s_RdtoolsEnable, "RDTOOLS", "Enable", "Yes");
-    t.Ini(L"Name", SETTING_TEXT, s_RdtoolsName, "RDTOOLS", "Name", "EvoX");
+        t.Header(L"FTP");
+        t.Ini(L"Enable", SETTING_YESNO, s_FtpEnable, "FTP", "Enable", "Yes");
+        t.Ini(L"Password", SETTING_TEXT, s_FtpPassword, "FTP", "Password", "xbox");
+        t.Header(L"Telnet");
+        t.Ini(L"Enable", SETTING_YESNO, s_TelnetEnable, "TELNET", "Enable", "Yes");
+        t.Header(L"RDTools");
+        t.Ini(L"Enable", SETTING_YESNO, s_RdtoolsEnable, "RDTOOLS", "Enable", "Yes");
+        t.Ini(L"Name", SETTING_TEXT, s_RdtoolsName, "RDTOOLS", "Name", "EvoX");
 
-    t.Header(L"Clock");
-    t.Ini(L"Jump To Ms Dash", SETTING_YESNO, s_JumpToMsDash, "Clock", "JumpToMsDash", "No");
-    t.Ini(L"Jump If No Link", SETTING_YESNO, s_JumpIfNoLink, "Clock", "JumpIfNoLink", "Yes");
-    t.Ini(L"24 hour", SETTING_YESNO, s_Use24, "Clock", "use24", "Yes");
-    t.Ini(L"SwapDate", SETTING_YESNO, s_SwapDate, "Clock", "SwapDate", "No");
-    t.Ini(L"SNTP Server", SETTING_TEXT, s_SntpServer, "Clock", "SNTP_Server", "0.0.0.0");
+        t.Header(L"Clock");
+        t.Ini(L"Jump To Ms Dash", SETTING_YESNO, s_JumpToMsDash, "Clock", "JumpToMsDash", "No");
+        t.Ini(L"Jump If No Link", SETTING_YESNO, s_JumpIfNoLink, "Clock", "JumpIfNoLink", "Yes");
+        t.Ini(L"24 hour", SETTING_YESNO, s_Use24, "Clock", "use24", "Yes");
+        t.Ini(L"SwapDate", SETTING_YESNO, s_SwapDate, "Clock", "SwapDate", "No");
+        t.Ini(L"SNTP Server", SETTING_TEXT, s_SntpServer, "Clock", "SNTP_Server", "0.0.0.0");
 
-    t.Header(L"Video");
-    SettingRow &video = t.Add(L"Video Standard", SETTING_INFO);
-    switch (XGetVideoStandard()) {
-    case XC_VIDEO_STANDARD_NTSC_M: video.live = L"NTSC - North America"; break;
-    case XC_VIDEO_STANDARD_NTSC_J: video.live = L"NTSC - Japan"; break;
-    case XC_VIDEO_STANDARD_PAL_I: video.live = L"PAL"; break;
-    default: video.live = L"Unknown"; break;
-    }
-    video.value = (char *)"";
-    SettingRow &region = t.Add(L"Game Region", SETTING_CHOICE);
-    m_gameRegionChoice = (int *)&region.value;
-    *m_gameRegionChoice = strtol(g_Ini->GetString("Misc", "GameRegion", "0"), nullptr, 10);
-    if (*m_gameRegionChoice >= 5)
-        *m_gameRegionChoice = 0;
-    region.live = s_GameRegions;
+        t.Header(L"Video");
+        SettingRow &video = t.Add(L"Video Standard", SETTING_INFO);
+        switch (XGetVideoStandard()) {
+        case XC_VIDEO_STANDARD_NTSC_M: video.live = L"NTSC - North America"; break;
+        case XC_VIDEO_STANDARD_NTSC_J: video.live = L"NTSC - Japan"; break;
+        case XC_VIDEO_STANDARD_PAL_I: video.live = L"PAL"; break;
+        default: video.live = L"Unknown"; break;
+        }
+        video.value = (char *)"";
+        SettingRow &region = t.Add(L"Game Region", SETTING_CHOICE);
+        m_gameRegionChoice = (int *)&region.value;
+        *m_gameRegionChoice = strtol(g_Ini->GetString("Misc", "GameRegion", "0"), nullptr, 10);
+        if (*m_gameRegionChoice >= 5)
+            *m_gameRegionChoice = 0;
+        region.live = s_GameRegions;
 
-    t.Header(L"Misc");
-    t.Info(L"M/B Temp", g_VarTemp1);
-    t.Info(L"CPU Temp", g_VarTemp2);
-    t.Info(L"HDD Temp", g_VarTemp3);
-    t.Info(L"Dash Version", g_VarVersion);
-    t.Ini(L"Fahrenheit", SETTING_YESNO, s_Fahrenheit, "Misc", "Fahrenheit", "No");
-    t.Ini(L"Auto Launch Games", SETTING_YESNO, s_AutoLaunchGames, "Misc", "AutoLaunchGames", "Yes");
-    t.Ini(L"Auto Launch DVD", SETTING_YESNO, s_AutoLaunchDvd, "Misc", "AutoLaunchDVD", "Yes");
-    t.Ini(L"Auto Launch Audio", SETTING_YESNO, s_AutoLaunchAudio, "Misc", "AutoLaunchAudio", "Yes");
-    t.Ini(L"Use F Drive", SETTING_YESNO, s_UseFDrive, "Misc", "UseFDrive", "No");
-    t.Ini(L"Use G Drive", SETTING_YESNO, s_UseGDrive, "Misc", "UseGDrive", "No");
-    t.Ini(L"Use Items.txt", SETTING_YESNO, s_UseItems, "Misc", "UseItems", "Yes");
-    t.Ini(L"Screen Saver", SETTING_TEXT, s_ScreenSaver, "Misc", "ScreenSaver", "5");
-    t.Ini(L"Shade Level", SETTING_TEXT, s_ShadeLevel, "Misc", "ShadeLevel", "90");
-    SettingRow &tsr = t.Add(L"TSR", SETTING_CHOICE);
-    m_tsrChoice = (int *)&tsr.value;
-    *m_tsrChoice = strtol(g_Ini->GetString("Misc", "TSR_Type", "1"), nullptr, 10);
-    if (*m_tsrChoice >= 3)
-        *m_tsrChoice = 0;
-    tsr.live = s_TsrTypes;
-    t.Ini(L"In Game Reset", SETTING_YESNO, s_Igr, "Misc", "IGR", "No");
+        t.Header(L"Misc");
+        t.Info(L"M/B Temp", g_VarTemp1);
+        t.Info(L"CPU Temp", g_VarTemp2);
+        t.Info(L"HDD Temp", g_VarTemp3);
+        t.Info(L"Dash Version", g_VarVersion);
+        t.Ini(L"Fahrenheit", SETTING_YESNO, s_Fahrenheit, "Misc", "Fahrenheit", "No");
+        t.Ini(L"Auto Launch Games", SETTING_YESNO, s_AutoLaunchGames, "Misc", "AutoLaunchGames", "Yes");
+        t.Ini(L"Auto Launch DVD", SETTING_YESNO, s_AutoLaunchDvd, "Misc", "AutoLaunchDVD", "Yes");
+        t.Ini(L"Auto Launch Audio", SETTING_YESNO, s_AutoLaunchAudio, "Misc", "AutoLaunchAudio", "Yes");
+        t.Ini(L"Use F Drive", SETTING_YESNO, s_UseFDrive, "Misc", "UseFDrive", "No");
+        t.Ini(L"Use G Drive", SETTING_YESNO, s_UseGDrive, "Misc", "UseGDrive", "No");
+        t.Ini(L"Use Items.txt", SETTING_YESNO, s_UseItems, "Misc", "UseItems", "Yes");
+        t.Ini(L"Screen Saver", SETTING_TEXT, s_ScreenSaver, "Misc", "ScreenSaver", "5");
+        t.Ini(L"Shade Level", SETTING_TEXT, s_ShadeLevel, "Misc", "ShadeLevel", "90");
+        SettingRow &tsr = t.Add(L"TSR", SETTING_CHOICE);
+        m_tsrChoice = (int *)&tsr.value;
+        *m_tsrChoice = strtol(g_Ini->GetString("Misc", "TSR_Type", "1"), nullptr, 10);
+        if (*m_tsrChoice >= 3)
+            *m_tsrChoice = 0;
+        tsr.live = s_TsrTypes;
+        t.Ini(L"In Game Reset", SETTING_YESNO, s_Igr, "Misc", "IGR", "No");
 
-    if (ChameleonRead(0) == 0xAA) {
-        t.Header(L"Chameleon Adapter");
-        t.Info(L"Raw", g_InfoChameleonRaw);
-        t.Info(L"Switch 1", g_InfoChameleonSw1);
-        t.Info(L"Switch 2", g_InfoChameleonSw2);
-        t.Info(L"Mode", g_InfoChameleonMode);
-        t.Info(L"Current Bank", g_InfoChameleonBank);
-    }
+        if (ChameleonRead(0) == 0xAA) {
+            t.Header(L"Chameleon Adapter");
+            t.Info(L"Raw", g_InfoChameleonRaw);
+            t.Info(L"Switch 1", g_InfoChameleonSw1);
+            t.Info(L"Switch 2", g_InfoChameleonSw2);
+            t.Info(L"Mode", g_InfoChameleonMode);
+            t.Info(L"Current Bank", g_InfoChameleonBank);
+        }
 
-    t.Header(L"Exit");
-    if (g_Ini->m_writable == true)
-        t.Add(L"Save And Exit", SETTING_SAVE).value = (char *)"";
-    t.Add(L"Exit", SETTING_EXIT).value = (char *)"";
-    g_SettingsCount = t.n;
-    g_Ini->Unlock();
+        t.Header(L"Exit");
+        if (g_Ini->m_writable == true)
+            t.Add(L"Save And Exit", SETTING_SAVE).value = (char *)"";
+        t.Add(L"Exit", SETTING_EXIT).value = (char *)"";
+        g_SettingsCount = t.n;
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 }
 
 // ---- SaveSettings (0x1B440) -------------------------------------------------------------------
@@ -234,42 +239,46 @@ void CEvoxDash::OpenSettings()
 void CEvoxDash::SaveSettings()
 {
     char number[0x80];
-    g_Ini->Lock();
-    g_Ini->SetValue("Network", "SetupNetwork", s_SetupNetwork);
-    g_Ini->SetValue("Network", "StaticIP", s_StaticIP);
-    g_Ini->SetValue("Network", "Ip", s_Ip);
-    g_Ini->SetValue("Network", "Subnetmask", s_Subnetmask);
-    g_Ini->SetValue("Network", "Defaultgateway", s_Gateway);
-    g_Ini->SetValue("Network", "DNS1", s_Dns1);
-    g_Ini->SetValue("Network", "DNS2", s_Dns2);
-    g_Ini->SetValue("Network", "SetupDelay", s_SetupDelay);
-    g_Ini->SetValue("Network", "SkipIfNoLink", s_SkipIfNoLink);
-    g_Ini->SetValue("FTP", "Enable", s_FtpEnable);
-    g_Ini->SetValue("FTP", "Password", s_FtpPassword);
-    g_Ini->SetValue("Telnet", "Enable", s_TelnetEnable);
-    g_Ini->SetValue("RDTOOLS", "Enable", s_RdtoolsEnable);
-    g_Ini->SetValue("RDTOOLS", "Name", s_RdtoolsName);
-    g_Ini->SetValue("Clock", "JumpToMsDash", s_JumpToMsDash);
-    g_Ini->SetValue("Clock", "JumpIfNoLink", s_JumpIfNoLink);
-    g_Ini->SetValue("Clock", "Use24", s_Use24);
-    g_Ini->SetValue("Clock", "SwapDate", s_SwapDate);
-    g_Ini->SetValue("Clock", "SNTP_Server", s_SntpServer);
-    sprintf(number, "%d", *m_gameRegionChoice);
-    g_Ini->SetValue("Misc", "GameRegion", number);
-    g_Ini->SetValue("Misc", "Fahrenheit", s_Fahrenheit);
-    g_Ini->SetValue("Misc", "AutoLaunchGames", s_AutoLaunchGames);
-    g_Ini->SetValue("Misc", "AutoLaunchDVD", s_AutoLaunchDvd);
-    g_Ini->SetValue("Misc", "AutoLaunchAudio", s_AutoLaunchAudio);
-    g_Ini->SetValue("Misc", "UseFDrive", s_UseFDrive);
-    g_Ini->SetValue("Misc", "UseGDrive", s_UseGDrive);
-    g_Ini->SetValue("Misc", "UseItems", s_UseItems);
-    g_Ini->SetValue("Misc", "ScreenSaver", s_ScreenSaver);
-    g_Ini->SetValue("Misc", "ShadeLevel", s_ShadeLevel);
-    sprintf(number, "%d", *m_tsrChoice);
-    g_Ini->SetValue("Misc", "TSR_Type", number);
-    g_Ini->SetValue("Misc", "IGR", s_Igr);
-    g_Ini->Save();
-    g_Ini->Unlock();
+    // catch (...) 0x1B803: release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        g_Ini->SetValue("Network", "SetupNetwork", s_SetupNetwork);
+        g_Ini->SetValue("Network", "StaticIP", s_StaticIP);
+        g_Ini->SetValue("Network", "Ip", s_Ip);
+        g_Ini->SetValue("Network", "Subnetmask", s_Subnetmask);
+        g_Ini->SetValue("Network", "Defaultgateway", s_Gateway);
+        g_Ini->SetValue("Network", "DNS1", s_Dns1);
+        g_Ini->SetValue("Network", "DNS2", s_Dns2);
+        g_Ini->SetValue("Network", "SetupDelay", s_SetupDelay);
+        g_Ini->SetValue("Network", "SkipIfNoLink", s_SkipIfNoLink);
+        g_Ini->SetValue("FTP", "Enable", s_FtpEnable);
+        g_Ini->SetValue("FTP", "Password", s_FtpPassword);
+        g_Ini->SetValue("Telnet", "Enable", s_TelnetEnable);
+        g_Ini->SetValue("RDTOOLS", "Enable", s_RdtoolsEnable);
+        g_Ini->SetValue("RDTOOLS", "Name", s_RdtoolsName);
+        g_Ini->SetValue("Clock", "JumpToMsDash", s_JumpToMsDash);
+        g_Ini->SetValue("Clock", "JumpIfNoLink", s_JumpIfNoLink);
+        g_Ini->SetValue("Clock", "Use24", s_Use24);
+        g_Ini->SetValue("Clock", "SwapDate", s_SwapDate);
+        g_Ini->SetValue("Clock", "SNTP_Server", s_SntpServer);
+        sprintf(number, "%d", *m_gameRegionChoice);
+        g_Ini->SetValue("Misc", "GameRegion", number);
+        g_Ini->SetValue("Misc", "Fahrenheit", s_Fahrenheit);
+        g_Ini->SetValue("Misc", "AutoLaunchGames", s_AutoLaunchGames);
+        g_Ini->SetValue("Misc", "AutoLaunchDVD", s_AutoLaunchDvd);
+        g_Ini->SetValue("Misc", "AutoLaunchAudio", s_AutoLaunchAudio);
+        g_Ini->SetValue("Misc", "UseFDrive", s_UseFDrive);
+        g_Ini->SetValue("Misc", "UseGDrive", s_UseGDrive);
+        g_Ini->SetValue("Misc", "UseItems", s_UseItems);
+        g_Ini->SetValue("Misc", "ScreenSaver", s_ScreenSaver);
+        g_Ini->SetValue("Misc", "ShadeLevel", s_ShadeLevel);
+        sprintf(number, "%d", *m_tsrChoice);
+        g_Ini->SetValue("Misc", "TSR_Type", number);
+        g_Ini->SetValue("Misc", "IGR", s_Igr);
+        g_Ini->Save();
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 }
 
 // ---- DrawSettings (0x1B820): draw, and handle input while the screen is up (state 26) ---------

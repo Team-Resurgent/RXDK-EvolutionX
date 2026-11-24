@@ -5,6 +5,7 @@
 #include <string.h>
 #include "evox/dash.h"
 #include "evox/globals.h"
+#include "evox/guard.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
 #include "evox/netcfg.h"
@@ -83,13 +84,22 @@ void __cdecl main()
     Log("Main : Done!\n\r");
 
     // Q: is the directory this XBE was started from
-    strncpy(g_DashRoot, XeImageFileName->Buffer, XeImageFileName->Length);
-    if (char *p = strrchr(g_DashRoot, '\\'))
-        *p = 0;
-    Log("Main : dash root %s\n\r", g_DashRoot);
-    RtlInitAnsiString(&s_DashRootString, g_DashRoot);
-    IoCreateSymbolicLink(&s_QDrive, &s_DashRootString);
-    strncpy(g_ImagePath, XeImageFileName->Buffer, XeImageFileName->Length);
+    // catch (...) 0x24DE5: log the image name and hang
+    if (!CrashGuard([&] {
+        strncpy(g_DashRoot, XeImageFileName->Buffer, XeImageFileName->Length);
+        if (char *p = strrchr(g_DashRoot, '\\'))
+            *p = 0;
+        Log("Main : dash root %s\n\r", g_DashRoot);
+        RtlInitAnsiString(&s_DashRootString, g_DashRoot);
+        IoCreateSymbolicLink(&s_QDrive, &s_DashRootString);
+        strncpy(g_ImagePath, XeImageFileName->Buffer, XeImageFileName->Length);
+    })) {
+        Log("Main :  XeImageFileName->Buffer ! crash\n\r");
+        Log("Main :  XeImageFileName->Buffer = %08x\n\r", (DWORD)XeImageFileName->Buffer);
+        Log("Main :  XeImageFileName->Buffer -> %s\n\r", XeImageFileName->Buffer);
+        for (;;)
+            ;
+    }
 
     g_Ini = new CIniFile;
 #ifdef EVOX_TEST_INI // test builds: a writable e:\evox.ini in place of q:\evox.ini
@@ -112,54 +122,62 @@ void __cdecl main()
     // JumpIfNoLink, after setting the clock to 2002-01-01 12:00 when it is not set).
     PLAUNCH_DATA_PAGE page = LaunchDataPage;
     Log("Main : Check Launch msdash!!\n\r");
-    g_Ini->Lock();
-    strcpy(g_MsDashPath, "c:\\msxboxdash.xbe");
-    if (char *p = strtok(g_Ini->GetString("Misc", "MSDashBoard", "c:\\msxboxdash.xbe"), "\""))
-        strcpy(g_MsDashPath, p);
     LAUNCH_DATA launchData;
-    if (page && page->Header.dwLaunchDataType == LDT_LAUNCH_DASHBOARD) {
-        memcpy(&launchData, &page->LaunchData, sizeof launchData);
-        const LD_LAUNCH_DASHBOARD *ld = (const LD_LAUNCH_DASHBOARD *)&launchData;
-        bool jump = true;
-        if (ld->dwReason == XLD_LAUNCH_DASHBOARD_SETTINGS && ld->dwParameter1 == XLD_SETTINGS_CLOCK &&
-            page->Header.dwTitleId == 0) {
-            SYSTEMTIME st = {2002, 1, 0, 1, 12, 0, 0, 0};
-            FILETIME ft;
-            SystemTimeToFileTime(&st, &ft);
-            NtSetSystemTime((PLARGE_INTEGER)&ft, nullptr);
-            if (EthernetLinkStatus())
-                jump = g_Ini->GetBool("Clock", "JumpToMsDash", false);
-            else
-                jump = g_Ini->GetBool("Clock", "JumpIfNoLink", true);
-        }
-        if (ld->dwReason != XLD_LAUNCH_DASHBOARD_ERROR && ld->dwReason != XLD_LAUNCH_DASHBOARD_MAIN_MENU &&
-            jump) {
-            if (FILE *f = fopen(g_MsDashPath, "rb")) {
-                fclose(f);
-                // ORIGINAL BUG: the XBE name passed here is a stack buffer main never fills
-                // (0x2452F). A fresh thread stack is zero, so it was most likely empty; the
-                // ';' that separates the D: path is then turned into '\'.
-                char xbeName[0x100] = {};
-                XWriteTitleInfoNoReboot(xbeName, "\\Device\\Harddisk0\\Partition2", LDT_LAUNCH_DASHBOARD,
-                                        page->Header.dwTitleId, &launchData);
-                if (char *p = strrchr(LaunchDataPage->Header.szLaunchPath, ';'))
-                    *p = '\\';
-                g_Ini->Unlock();
-                HalReturnToFirmware(HalQuickRebootRoutine);
+    // catch (...) 0x24784: release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        strcpy(g_MsDashPath, "c:\\msxboxdash.xbe");
+        if (char *p = strtok(g_Ini->GetString("Misc", "MSDashBoard", "c:\\msxboxdash.xbe"), "\""))
+            strcpy(g_MsDashPath, p);
+        if (page && page->Header.dwLaunchDataType == LDT_LAUNCH_DASHBOARD) {
+            memcpy(&launchData, &page->LaunchData, sizeof launchData);
+            const LD_LAUNCH_DASHBOARD *ld = (const LD_LAUNCH_DASHBOARD *)&launchData;
+            bool jump = true;
+            if (ld->dwReason == XLD_LAUNCH_DASHBOARD_SETTINGS && ld->dwParameter1 == XLD_SETTINGS_CLOCK &&
+                page->Header.dwTitleId == 0) {
+                SYSTEMTIME st = {2002, 1, 0, 1, 12, 0, 0, 0};
+                FILETIME ft;
+                SystemTimeToFileTime(&st, &ft);
+                NtSetSystemTime((PLARGE_INTEGER)&ft, nullptr);
+                if (EthernetLinkStatus())
+                    jump = g_Ini->GetBool("Clock", "JumpToMsDash", false);
+                else
+                    jump = g_Ini->GetBool("Clock", "JumpIfNoLink", true);
+            }
+            if (ld->dwReason != XLD_LAUNCH_DASHBOARD_ERROR && ld->dwReason != XLD_LAUNCH_DASHBOARD_MAIN_MENU &&
+                jump) {
+                if (FILE *f = fopen(g_MsDashPath, "rb")) {
+                    fclose(f);
+                    // ORIGINAL BUG: the XBE name passed here is a stack buffer main never fills
+                    // (0x2452F). A fresh thread stack is zero, so it was most likely empty; the
+                    // ';' that separates the D: path is then turned into '\'.
+                    char xbeName[0x100] = {};
+                    XWriteTitleInfoNoReboot(xbeName, "\\Device\\Harddisk0\\Partition2", LDT_LAUNCH_DASHBOARD,
+                                            page->Header.dwTitleId, &launchData);
+                    if (char *p = strrchr(LaunchDataPage->Header.szLaunchPath, ';'))
+                        *p = '\\';
+                    g_Ini->Unlock();
+                    HalReturnToFirmware(HalQuickRebootRoutine);
+                }
             }
         }
-    }
-    g_Ini->Unlock();
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 
-    Log("Main : Check LaunchInfo\n");
-    DWORD launchType = 0;
-    if (XGetLaunchInfo(&launchType, &launchData) == ERROR_SUCCESS) {
-        Log("Main : %08x\n", launchType);
-        if (launchType == LDT_FROM_DEBUGGER_CMDLINE)
-            Log("Main Debug : %s\n", (const char *)&launchData);
-    } else {
-        Log("Main : No LaunchInfo\n");
-    }
+    // catch (...) 0x247A7: releases the lock too, though this block does not take it
+    if (!CrashGuard([&] {
+        Log("Main : Check LaunchInfo\n");
+        DWORD launchType = 0;
+        if (XGetLaunchInfo(&launchType, &launchData) == ERROR_SUCCESS) {
+            Log("Main : %08x\n", launchType);
+            if (launchType == LDT_FROM_DEBUGGER_CMDLINE)
+                Log("Main Debug : %s\n", (const char *)&launchData);
+        } else {
+            Log("Main : No LaunchInfo\n");
+        }
+    }))
+        g_Ini->Unlock();
 
     Log("Main : Check for Chameleon!!\n\r");
     if (ChameleonRead(0) == 0xAA) {
@@ -169,100 +187,121 @@ void __cdecl main()
     }
 
     Log("Main : Network Setup!!\n\r");
-    g_Ini->Lock();
-    g_NetSetupDelay = IniInt("Network", "SetupDelay", "0");
-    if (g_Ini->GetBool("Network", "SetupNetwork", false)) {
-        XNetLoadConfigParams(&g_NetConfig);
-        if (g_Ini->GetBool("Network", "StaticIP", false)) {
-            g_NetConfig.mode = 0xC;
-            g_NetConfig.v1_ip = g_NetConfig.v2_ip = inet_addr(g_Ini->GetString("Network", "Ip", "192.168.0.2"));
-            g_NetConfig.v1_gateway = g_NetConfig.v2_gateway =
-                inet_addr(g_Ini->GetString("Network", "Defaultgateway", "192.168.0.1"));
-            g_NetConfig.v1_netmask = g_NetConfig.v2_netmask =
-                inet_addr(g_Ini->GetString("Network", "Subnetmask", "255.255.255.0"));
-            g_NetConfig.v1_dns1 = g_NetConfig.v2_dns1 = inet_addr(g_Ini->GetString("Network", "DNS1", "0.0.0.0"));
-            g_NetConfig.v1_dns2 = g_NetConfig.v2_dns2 = inet_addr(g_Ini->GetString("Network", "DNS2", "0.0.0.0"));
-        } else {
-            g_NetConfig.v1_ip = 0;
-            g_NetConfig.v1_netmask = 0;
-            g_NetConfig.v1_gateway = 0;
-            g_NetConfig.v1_dns1 = 0;
-            g_NetConfig.v1_dns2 = 0;
-            g_NetConfig.mode = 0;
+    // catch (...) 0x24AB5: release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        g_NetSetupDelay = IniInt("Network", "SetupDelay", "0");
+        if (g_Ini->GetBool("Network", "SetupNetwork", false)) {
+            XNetLoadConfigParams(&g_NetConfig);
+            if (g_Ini->GetBool("Network", "StaticIP", false)) {
+                g_NetConfig.mode = 0xC;
+                g_NetConfig.v1_ip = g_NetConfig.v2_ip = inet_addr(g_Ini->GetString("Network", "Ip", "192.168.0.2"));
+                g_NetConfig.v1_gateway = g_NetConfig.v2_gateway =
+                    inet_addr(g_Ini->GetString("Network", "Defaultgateway", "192.168.0.1"));
+                g_NetConfig.v1_netmask = g_NetConfig.v2_netmask =
+                    inet_addr(g_Ini->GetString("Network", "Subnetmask", "255.255.255.0"));
+                g_NetConfig.v1_dns1 = g_NetConfig.v2_dns1 =
+                    inet_addr(g_Ini->GetString("Network", "DNS1", "0.0.0.0"));
+                g_NetConfig.v1_dns2 = g_NetConfig.v2_dns2 =
+                    inet_addr(g_Ini->GetString("Network", "DNS2", "0.0.0.0"));
+            } else {
+                g_NetConfig.v1_ip = 0;
+                g_NetConfig.v1_netmask = 0;
+                g_NetConfig.v1_gateway = 0;
+                g_NetConfig.v1_dns1 = 0;
+                g_NetConfig.v1_dns2 = 0;
+                g_NetConfig.mode = 0;
+            }
+            XNetSaveConfigParams(&g_NetConfig);
         }
-        XNetSaveConfigParams(&g_NetConfig);
-    }
-    g_Ini->Unlock();
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 
-    g_Ini->Lock();
-    g_IgrEnabled = g_Ini->GetBool("Misc", "IGR", false);
-    g_TsrType = IniInt("Misc", "TSR_Type", "1");
-    g_UseItems = g_Ini->GetBool("Misc", "UseItems", false);
-    g_IgrButtons = 0;
-    g_IgrButtons2 = 0;
-    if (g_Ini->GetBool("IGR", "Start_Button", true))
-        g_IgrButtons |= 0x10;
-    if (g_Ini->GetBool("IGR", "Back_Button", true))
-        g_IgrButtons |= 0x20;
-    if (g_Ini->GetBool("IGR", "L_Trig", true))
-        g_IgrButtons2 |= 0x40;
-    if (g_Ini->GetBool("IGR", "R_Trig", true))
-        g_IgrButtons2 |= 0x80;
-    if (g_Ini->GetBool("IGR", "White_Button", false))
-        g_IgrButtons2 |= 0x20;
-    if (g_Ini->GetBool("IGR", "Black_Button", false))
-        g_IgrButtons2 |= 0x10;
-    if (g_Ini->GetBool("IGR", "A_Button", false))
-        g_IgrButtons2 |= 0x01;
-    if (g_Ini->GetBool("IGR", "B_Button", false))
-        g_IgrButtons2 |= 0x02;
-    if (g_Ini->GetBool("IGR", "X_Button", false))
-        g_IgrButtons2 |= 0x04;
-    if (g_Ini->GetBool("IGR", "Y_Button", false))
-        g_IgrButtons2 |= 0x08;
-    g_Fahrenheit = g_Ini->GetBool("Misc", "Fahrenheit", false);
-    g_UseItems = g_Ini->GetBool("Misc", "UseItems", true); // read a second time, default true
-    g_ScreenSaverMinutes = IniInt("Misc", "ScreenSaver", "5");
-    g_ShadeLevel = IniInt("Misc", "ShadeLevel", "90");
-    if ((unsigned)g_ShadeLevel > 100)
-        g_ShadeLevel = 100;
-    g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
-    g_ChameleonLed = IniInt("Misc", "ChameleonLed", "15");
-    ChameleonSetLed(g_ChameleonLed != 0);
-    g_Ini->Unlock();
+    // catch (...) 0x24D03: release the lock
+    if (!CrashGuard([&] {
+        g_Ini->Lock();
+        g_IgrEnabled = g_Ini->GetBool("Misc", "IGR", false);
+        g_TsrType = IniInt("Misc", "TSR_Type", "1");
+        g_UseItems = g_Ini->GetBool("Misc", "UseItems", false);
+        g_IgrButtons = 0;
+        g_IgrButtons2 = 0;
+        if (g_Ini->GetBool("IGR", "Start_Button", true))
+            g_IgrButtons |= 0x10;
+        if (g_Ini->GetBool("IGR", "Back_Button", true))
+            g_IgrButtons |= 0x20;
+        if (g_Ini->GetBool("IGR", "L_Trig", true))
+            g_IgrButtons2 |= 0x40;
+        if (g_Ini->GetBool("IGR", "R_Trig", true))
+            g_IgrButtons2 |= 0x80;
+        if (g_Ini->GetBool("IGR", "White_Button", false))
+            g_IgrButtons2 |= 0x20;
+        if (g_Ini->GetBool("IGR", "Black_Button", false))
+            g_IgrButtons2 |= 0x10;
+        if (g_Ini->GetBool("IGR", "A_Button", false))
+            g_IgrButtons2 |= 0x01;
+        if (g_Ini->GetBool("IGR", "B_Button", false))
+            g_IgrButtons2 |= 0x02;
+        if (g_Ini->GetBool("IGR", "X_Button", false))
+            g_IgrButtons2 |= 0x04;
+        if (g_Ini->GetBool("IGR", "Y_Button", false))
+            g_IgrButtons2 |= 0x08;
+        g_Fahrenheit = g_Ini->GetBool("Misc", "Fahrenheit", false);
+        g_UseItems = g_Ini->GetBool("Misc", "UseItems", true); // read a second time, default true
+        g_ScreenSaverMinutes = IniInt("Misc", "ScreenSaver", "5");
+        g_ShadeLevel = IniInt("Misc", "ShadeLevel", "90");
+        if ((unsigned)g_ShadeLevel > 100)
+            g_ShadeLevel = 100;
+        g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
+        g_ChameleonLed = IniInt("Misc", "ChameleonLed", "15");
+        ChameleonSetLed(g_ChameleonLed != 0);
+        g_Ini->Unlock();
+    }))
+        g_Ini->Unlock();
 
-    if (!g_Ini->GetBool("Network", "SkipIfNoLink", false) || EthernetLinkStatus()) {
-        Log("Main : Start the network service!!\n\r");
-        XNetStartupParams xnsp = {};
-        xnsp.cfgSizeOfStruct = sizeof xnsp; // the original passed its 12-byte XDK struct
-        xnsp.cfgFlags = XNET_STARTUP_BYPASS_SECURITY;
-        xnsp.cfgSockMaxSockets = 0xFF;
-        if (g_NetSetupDelay)
-            Sleep(g_NetSetupDelay);
-        Log("Main : XNetStartup %d\n\r", XNetStartup(&xnsp));
-        if (g_NetSetupDelay)
-            Sleep(g_NetSetupDelay);
-        WSADATA wsa;
-        Log("Main : WSAStartup %d\n\r", WSAStartup(MAKEWORD(2, 2), &wsa));
-        if (g_NetSetupDelay)
-            Sleep(g_NetSetupDelay);
-        g_NetworkStarted = true;
-    } else {
-        Log("Main : No Link\n\r");
-        g_NetworkStarted = false;
-    }
+    // catch (...) 0x24DA7: log it and go on to the dashboard
+    if (!CrashGuard([&] {
+        if (!g_Ini->GetBool("Network", "SkipIfNoLink", false) || EthernetLinkStatus()) {
+            Log("Main : Start the network service!!\n\r");
+            XNetStartupParams xnsp = {};
+            xnsp.cfgSizeOfStruct = sizeof xnsp; // the original passed its 12-byte XDK struct
+            xnsp.cfgFlags = XNET_STARTUP_BYPASS_SECURITY;
+            xnsp.cfgSockMaxSockets = 0xFF;
+            if (g_NetSetupDelay)
+                Sleep(g_NetSetupDelay);
+            Log("Main : XNetStartup %d\n\r", XNetStartup(&xnsp));
+            if (g_NetSetupDelay)
+                Sleep(g_NetSetupDelay);
+            WSADATA wsa;
+            Log("Main : WSAStartup %d\n\r", WSAStartup(MAKEWORD(2, 2), &wsa));
+            if (g_NetSetupDelay)
+                Sleep(g_NetSetupDelay);
+            g_NetworkStarted = true;
+        } else {
+            Log("Main : No Link\n\r");
+            g_NetworkStarted = false;
+        }
+    }))
+        Log("Main : Error starting the network service!!\n\r");
 
-    {
+    // catch (...) 0x24DD8: halt (as the end of main does)
+    if (!CrashGuard([&] {
         CEvoxDash dash;
         Log("Main : OpenX_Dash.Create\n\r");
         if (dash.Create() == S_OK) {
             Log("Main : OK\n\r");
-            g_Ini->Lock();
-            Log("Main : Start Telnet\n\r");
-            if (g_Ini->GetBool("Telnet", "enable", true))
-                new CTelnetServer;
-            Log("Main : OK\n\r");
-            g_Ini->Unlock();
+            // catch (...) 0x24DBA: release the lock, log "Fail" and run the dashboard anyway
+            if (!CrashGuard([&] {
+                g_Ini->Lock();
+                Log("Main : Start Telnet\n\r");
+                if (g_Ini->GetBool("Telnet", "enable", true))
+                    new CTelnetServer;
+                Log("Main : OK\n\r");
+                g_Ini->Unlock();
+            })) {
+                g_Ini->Unlock();
+                Log("Main : Fail\n\r");
+            }
             Log("Main : OpenX_Dash.Run\n\r");
             dash.Run();
             Log("Main : OpenX_Dash.Run - return\n\r");
@@ -280,12 +319,14 @@ void __cdecl main()
             if (g_TsrType) {
                 g_Unknown596500 = g_Unknown591A98;
                 Log("Main : InsIGR\n\r");
-                g_GameRegion = g_GameRegionOverride ? g_GameRegionOverride : (BYTE)IniInt("Misc", "GameRegion", "0");
+                g_GameRegion =
+                    g_GameRegionOverride ? g_GameRegionOverride : (BYTE)IniInt("Misc", "GameRegion", "0");
                 IgrInstall();
             }
             IgrFinish();
             HalReturnToFirmware(HalHaltRoutine);
         }
-    }
+    }))
+        HalReturnToFirmware(HalHaltRoutine);
     HalReturnToFirmware(HalHaltRoutine);
 }
