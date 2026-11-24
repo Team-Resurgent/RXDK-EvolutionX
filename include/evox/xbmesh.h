@@ -47,7 +47,7 @@ public:
     CXBMesh();          // 0x25BB0
     virtual HRESULT RenderFrame(IDirect3DDevice8 *dev, XBMESH_FRAME *frame, DWORD flags);   // 0x25E90
     virtual HRESULT RenderMesh(IDirect3DDevice8 *dev, XBMESH_DATA *mesh, DWORD flags);      // 0x25F30
-    virtual ~CXBMesh(); // 0x25BE0
+    virtual ~CXBMesh(); // 0x25BE0 (the vtable holds the compiler-made deleting destructor 0x260A0)
     virtual BOOL RenderCallback(IDirect3DDevice8 *dev, DWORD subset, XBMESH_SUBSET *s, DWORD flags); // 0x25BD0
 
     HRESULT Create(IDirect3DDevice8 *dev, const BYTE *xbg, CXBPackedResource *res); // 0x25C80
