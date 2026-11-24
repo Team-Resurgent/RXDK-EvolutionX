@@ -12,8 +12,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
+#include "evox/actions.h"
 #include "evox/dash.h"
 #include "evox/devices.h"
+#include "evox/flash.h"
 #include "evox/globals.h"
 #include "evox/log.h"
 #include "evox/pending.h"
@@ -99,7 +101,7 @@ void CEvoxDash::Run()
     m_278 = -100;
     m_27C = false;
     m_action = 0;
-    m_drawE8D = false;
+    m_drawAction = false;
     m_drawSettings = false;
     m_EA8 = 0;
     m_EAC = 0;
@@ -109,9 +111,9 @@ void CEvoxDash::Run()
     m_fade = 0;
     m_state = 2;
     m_drawMessage = false;
-    m_FC8 = 0;
-    m_FCC = 0;
-    m_10D0 = false;
+    m_messageFade = 0;
+    m_flashStep = 0;
+    m_flashNow = false;
     m_labelAlpha = 0xFF;
     m_10D4 = 0;
     m_fadeAlpha = 0;
@@ -197,11 +199,11 @@ void CEvoxDash::Run()
             m_action = 0;
             m_27C = false;
             m_drawMessage = true;
-            g_Unknown95BC0 = 0xFF;
-            g_Unknown95BC1 = 0xFF;
-            g_Unknown57E5C8 = 0;
-            g_Unknown57EDC8 = 0;
-            m_FCC = 0;
+            g_FlashManufacturer = 0xFF;
+            g_FlashDevice = 0xFF;
+            g_FlashLine1[0] = 0;
+            g_FlashLine2[0] = 0;
+            m_flashStep = 0;
             strcpy(m_message, m_menu->GetItem(m_menu->selected)->path);
             goto action_done;
         }
@@ -334,11 +336,11 @@ void CEvoxDash::Run()
                 g_SelectedItem = m_action - 200;
                 m_action = 0;
                 m_27C = false;
-                m_drawE8D = true;
-                m_E90 = 0;
-                m_E94 = 0;
+                m_drawAction = true;
+                m_actionFade = 0;
+                m_progressFade = 0;
                 m_state = 11;
-                m_E8C = false;
+                m_actionYes = false;
                 OpenItem();
             }
             break;
@@ -369,8 +371,8 @@ void CEvoxDash::Run()
                 m_state = 22;
                 m_27C = false;
                 m_drawMessage = true;
-                m_10D0 = true;
-                m_FCC = 0;
+                m_flashNow = true;
+                m_flashStep = 0;
                 strcpy(m_message, m_ftp->m_messageText);
             }
         }
@@ -434,61 +436,61 @@ void CEvoxDash::Run()
             break;
         case 11:
             FadeDown(m_fade);
-            if ((m_E90 += 8) > 0xFF) {
+            if ((m_actionFade += 8) > 0xFF) {
                 m_state = 12;
-                m_E90 = 0xFF;
+                m_actionFade = 0xFF;
             }
             break;
         case 13:
             FadeUp(m_fade);
-            if ((m_E90 -= 8) < 0) {
-                m_drawE8D = false;
-                m_E90 = 0;
+            if ((m_actionFade -= 8) < 0) {
+                m_drawAction = false;
+                m_actionFade = 0;
                 goto back_to_idle;
             }
             break;
         case 14:
-            if (g_Unknown57E5BC == 0)
+            if (!g_ActionThread)
                 m_state = 16;
             break;
         case 15:
-            if ((m_E94 += 8) > 0xFF)
-                m_E94 = 0xFF;
-            if ((m_E90 -= 8) < 0) {
+            if ((m_progressFade += 8) > 0xFF)
+                m_progressFade = 0xFF;
+            if ((m_actionFade -= 8) < 0) {
                 m_state = 14;
-                m_E90 = 0;
-                Func20F20();
+                m_actionFade = 0;
+                StartActionScript();
             }
             break;
         case 16:
             FadeUp(m_fade);
-            if ((m_E94 -= 8) < 0) {
+            if ((m_progressFade -= 8) < 0) {
                 m_state = 0;
                 m_27C = true;
-                m_drawE8D = false;
-                m_E90 = 0;
-                if (g_Unknown57E5C0 == true) {
+                m_drawAction = false;
+                m_actionFade = 0;
+                if (g_ActionFlash == true) {
                     m_action = 0;
                     m_state = 22;
                     m_27C = false;
                     m_drawMessage = true;
-                    m_10D0 = true;
-                    m_FCC = 0;
-                    strcpy(m_message, g_Unknown47CFE0);
-                    g_Unknown57E5C0 = false;
+                    m_flashNow = true;
+                    m_flashStep = 0;
+                    strcpy(m_message, g_ActionFlashFile);
+                    g_ActionFlash = false;
                 }
             }
             break;
         case 22: // message in
-            if ((m_FC8 += 8) > 0xFF) {
+            if ((m_messageFade += 8) > 0xFF) {
                 m_state = 23;
-                m_FC8 = 0xFF;
+                m_messageFade = 0xFF;
             }
             break;
         case 24: // message out
-            if ((m_FC8 -= 8) < 0) {
+            if ((m_messageFade -= 8) < 0) {
                 m_drawMessage = false;
-                m_FC8 = 0;
+                m_messageFade = 0;
                 goto back_to_idle;
             }
             break;

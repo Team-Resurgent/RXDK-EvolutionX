@@ -23,10 +23,3 @@ void IdentifyDrive() { PENDING("IdentifyDrive", 0x236E0); }
 bool AtaCommand(AtaRegisters *) { PENDING("AtaCommand", 0x23530); return false; }
 void SmartEnabled237C0() { PENDING("SmartEnabled237C0", 0x237C0); }
 void Func235F0() { PENDING("Func235F0", 0x235F0); }
-
-// the dashboard
-void Func20F20() { PENDING("Func20F20", 0x20F20); }
-
-void CEvoxDash::OpenItem() { PENDING("CEvoxDash::OpenItem", 0x1CAC0); }
-void CEvoxDash::DrawPass187B0() { PENDING_ONCE("CEvoxDash::DrawPass187B0", 0x187B0); }
-void CEvoxDash::DrawMessage() { PENDING_ONCE("CEvoxDash::DrawMessage", 0x18E30); }

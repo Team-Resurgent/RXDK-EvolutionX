@@ -21,7 +21,12 @@ static_assert(offsetof(CEvoxDash, m_font) == 0x184, "m_font");
 static_assert(offsetof(CEvoxDash, m_xpr) == 0x1D4, "m_xpr");
 static_assert(offsetof(CEvoxDash, m_mesh) == 0x200, "m_mesh");
 static_assert(offsetof(CEvoxDash, m_action) == 0x280, "m_action");
-static_assert(offsetof(CEvoxDash, m_E8C) == 0xE8C, "m_E8C");
+static_assert(offsetof(CEvoxDash, m_actionTitle) == 0x288, "m_actionTitle");
+static_assert(offsetof(CEvoxDash, m_actionProgress) == 0xC88, "m_actionProgress");
+static_assert(offsetof(CEvoxDash, m_actionLines) == 0xE88, "m_actionLines");
+static_assert(offsetof(CEvoxDash, m_actionYes) == 0xE8C, "m_actionYes");
+static_assert(offsetof(CEvoxDash, m_flashStep) == 0xFCC, "m_flashStep");
+static_assert(offsetof(CEvoxDash, m_flashNow) == 0x10D0, "m_flashNow");
 static_assert(offsetof(CEvoxDash, m_ftp) == 0xFB0, "m_ftp");
 static_assert(offsetof(CEvoxDash, m_message) == 0xFD0, "m_message");
 static_assert(offsetof(CEvoxDash, m_fadeAlpha) == 0x10E4, "m_fadeAlpha");
@@ -197,8 +202,8 @@ void CEvoxDash::Render()
     DrawLabels();
     if (m_drawMenu)
         DrawMenu();
-    if (m_drawE8D)
-        DrawPass187B0();
+    if (m_drawAction)
+        DrawActionBox();
     if (m_drawSettings)
         DrawSettings();
     if (m_drawE98)
