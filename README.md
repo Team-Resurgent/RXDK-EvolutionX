@@ -12,6 +12,10 @@
   <a href="https://www.patreon.com/teamresurgent"><img src="https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon"></a>
 </p>
 
+<p align="center">
+  <img src="docs/images/start-screen.png" width="640" alt="The rebuilt EvolutionX's start screen in xemu: the built-in skin with the turning logo and the main menu">
+</p>
+
 ## About
 
 EvolutionX is the classic Xbox dashboard: the skinnable menu with its `[Menu]` in evox.ini, the
@@ -76,8 +80,8 @@ SHA-256, so only build 3935 is accepted) and the build links them in unchanged; 
 is committed. `EVOX_XBE=<path>` points at the original elsewhere. Without it the XBE still builds,
 with a warning, but has no graphics and no in-game reset.
 
-Every push to `main` builds on GitHub Actions (Windows, Linux and macOS), without the assets, and
-uploads that XBE as a build artifact; no release is published, since it would have no graphics.
+Every push to `main` builds on GitHub Actions (Windows), without the assets, and uploads that XBE
+as a build artifact; no release is published, since it would have no graphics.
 `RX_OUT=<dir>` builds somewhere else; `EXTRA_CFLAGS` adds defines, e.g.
 `EXTRA_CFLAGS=-DEVOX_UART_LOG ./build.sh`; `PYTHON` picks the Python 3.
 
