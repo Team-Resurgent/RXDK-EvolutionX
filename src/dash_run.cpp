@@ -1,13 +1,13 @@
 // CEvoxDash::Run (0x1DDB0 in the original): the frame loop. Per frame: keyboard and gamepads
 // (merged into m_DefaultGamepad as the sample framework does), timing and frame rate, Render,
 // the Chameleon LED, then three steps:
-//   m_action  a command for this frame (menu entries, servers): 0 none, see the switch below;
+//   m_action  a command for this frame (menu entries, servers): a DashAction (dash.h);
 //             200..299 opens item (action - 200)
-//   m_state   the screen's fade / transition state, 0 idle; each step moves a fade level by 8
+//   m_state   the screen's fade / transition, a DashState (dash.h); each step moves a fade by 8
 //             (0..255) and ends in the next state
 //   auto-launch of an inserted DVD, audio CD or game
 // Run returns when the dashboard should leave (launching something, the servers' quit flags),
-// with m_InstallIgr set for main; actions 5 and 32 halt from here.
+// with m_installIgr set for main; the reboot and power-off actions do not return.
 #include <xtl.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,7 +24,7 @@
 
 DWORD g_ChameleonBlink = 1;
 int g_DiscType = 3;
-CMenu g_MenuMain, g_Menu47BC60, g_MenuBios, g_MenuTrainers, g_MenuSkins;
+CMenu g_MenuMain, g_MenuAction4, g_MenuBios, g_MenuTrainers, g_MenuSkins;
 CMenu *g_MenuStack[0x102];
 int g_MenuDepth;
 int g_SelectedItem;
@@ -95,29 +95,29 @@ void CEvoxDash::Run()
 
     m_menu = &g_MenuMain;
     m_persistAlpha = F32(0x3F800000);
-    m_InstallIgr = false;
+    m_installIgr = false;
     m_drawMenu = true;
-    m_270 = 0;
-    m_278 = -100;
-    m_27C = false;
-    m_action = 0;
+    m_cursor = 0;
+    m_unused278 = -100;
+    m_menuInput = false;
+    m_action = ACTION_NONE;
     m_drawAction = false;
     m_drawSettings = false;
-    m_EA8 = 0;
-    m_EAC = 0;
-    m_E9C = 0;
-    m_drawE98 = false;
+    m_settingsRow = 0;
+    m_settingsTop = 0;
+    m_backupFade = 0;
+    m_drawBackup = false;
     m_frame = 0;
     m_fade = 0;
-    m_state = 2;
+    m_state = STATE_MENU_IN;
     m_drawMessage = false;
     m_messageFade = 0;
     m_flashStep = 0;
     m_flashNow = false;
     m_labelAlpha = 0xFF;
-    m_10D4 = 0;
+    m_unused10D4 = 0;
     m_fadeAlpha = 0;
-    m_192C = 0;
+    m_actionExtraFlags = 0;
     m_ledFlags = 0;
     m_nextMenu = &g_MenuMain;
 
@@ -129,15 +129,15 @@ void CEvoxDash::Run()
             m_action = EVOX_TEST_ACTION;
         }
 #endif
-        m_keyboard = PollRemote();
+        m_remoteButton = PollRemote();
         XBInput_GetInput(m_Gamepad);
         MergeGamepads(m_Gamepad, m_DefaultGamepad);
         if ((m_keystroke = (const BYTE *)GetKeystroke())) {
             m_key = m_keystroke[0];
-            m_keyFlags = m_keystroke[1];
+            m_keyAscii = m_keystroke[1];
         } else {
             m_key = 0;
-            m_keyFlags = 0;
+            m_keyAscii = 0;
         }
 #ifdef EVOX_TEST_SCRIPT
         RunTestScript();
@@ -179,7 +179,7 @@ void CEvoxDash::Run()
                 break;
             }
         }
-        if (m_action != 0 && g_HasChameleon == true) {
+        if (m_action != ACTION_NONE && g_HasChameleon == true) {
             if (m_ledFlags & 7)
                 ChameleonSetColour(m_ledFlags & 7);
             if (m_ledFlags & 0x40)
@@ -188,16 +188,16 @@ void CEvoxDash::Run()
 
         // ---- this frame's command ----
         switch (m_action) {
-        case 0:
+        case ACTION_NONE:
             goto action_done;
-        case 1:
-            m_state = 8;
+        case ACTION_BIOS_MENU:
+            m_state = STATE_SUBMENU;
             m_nextMenu = &g_MenuBios;
             break;
-        case 2: {
-            m_state = 22;
-            m_action = 0;
-            m_27C = false;
+        case ACTION_FLASH_BIOS_FILE: {
+            m_state = STATE_MESSAGE_IN;
+            m_action = ACTION_NONE;
+            m_menuInput = false;
             m_drawMessage = true;
             g_FlashManufacturer = 0xFF;
             g_FlashDevice = 0xFF;
@@ -207,26 +207,26 @@ void CEvoxDash::Run()
             strcpy(m_message, m_menu->GetItem(m_menu->selected)->path);
             goto action_done;
         }
-        case 3: // the MS dashboard
+        case ACTION_MS_DASH: // the MS dashboard
             LaunchXbe(g_MsDashPath);
-            m_action = 0;
-            g_Unknown591A98 = g_IgrEnabled;
+            m_action = ACTION_NONE;
+            g_IgrOnLaunch = g_IgrEnabled;
             goto leave;
-        case 4:
-            m_state = 8;
-            m_nextMenu = &g_Menu47BC60;
+        case ACTION_MENU4:
+            m_state = STATE_SUBMENU;
+            m_nextMenu = &g_MenuAction4;
             break;
-        case 5:
+        case ACTION_QUICK_REBOOT:
             PrepareForExit();
             HalReturnToFirmware(HalHaltRoutine);
             return;
-        case 8: { // launch the selected item
-            m_action = 0;
+        case ACTION_LAUNCH: { // launch the selected item
+            m_action = ACTION_NONE;
             LaunchXbe(m_menu->GetItem(m_menu->selected)->path);
             if (m_menu->GetItem(m_menu->selected)->flags & 0x200)
                 SetTrainer(m_menu->GetItem(m_menu->selected)->trainer);
             if (m_menu->GetItem(m_menu->selected)->flags & 0x100)
-                g_Unknown95D64 = 0;
+                g_LaunchMountsD = 0;
             g_IgrFlags = 0;
             if (m_menu->GetItem(m_menu->selected)->flags & 0x400)
                 g_IgrFlags |= 1;
@@ -243,22 +243,22 @@ void CEvoxDash::Run()
                 g_GameRegionOverride = 4;
                 break;
             }
-            g_Unknown591A98 = g_IgrEnabled;
+            g_IgrOnLaunch = g_IgrEnabled;
             goto leave;
         }
-        case 9:
-            m_state = 25;
-            m_action = 0;
-            m_27C = false;
+        case ACTION_SETTINGS:
+            m_state = STATE_SETTINGS_IN;
+            m_action = ACTION_NONE;
+            m_menuInput = false;
             m_drawSettings = true;
-            m_EA4 = 0;
-            m_EA8 = 0;
-            m_EAC = 0;
-            m_1911 = true;
+            m_settingsFade = 0;
+            m_settingsRow = 0;
+            m_settingsTop = 0;
+            m_isSettings = true;
             OpenSettings();
             goto action_done;
-        case 10: { // (a debug leftover) IRQL test, written to e:\dump.txt
-            m_action = 0;
+        case ACTION_POWER_OFF: { // (a debug leftover) IRQL test, written to e:\dump.txt
+            m_action = ACTION_NONE;
             KIRQL old = KeRaiseIrqlToDpcLevel();
             KIRQL cur = KeGetCurrentIrql();
             HalInitiateShutdown();
@@ -268,108 +268,108 @@ void CEvoxDash::Run()
             fclose(f);
             goto action_done;
         }
-        case 11:
-            m_27C = false;
-            m_state = 5;
-            m_drawE98 = true;
+        case ACTION_BACKUP:
+            m_menuInput = false;
+            m_state = STATE_BACKUP_IN;
+            m_drawBackup = true;
             break;
-        case 12:
+        case ACTION_LOAD_SKIN:
             LoadSkin(m_menu->GetItem(m_menu->selected)->path);
             break;
-        case 13:
-            m_state = 8;
+        case ACTION_SKIN_MENU:
+            m_state = STATE_SUBMENU;
             m_nextMenu = &g_MenuSkins;
             break;
-        case 14: // launch what is in the drive
-            m_action = 0;
+        case ACTION_LAUNCH_DISC: // launch what is in the drive
+            m_action = ACTION_NONE;
             if (g_DiscType == 0) {
                 m_autoLaunchDvd = false;
-                m_InstallIgr = true;
-                m_state = 1;
-                m_27C = false;
+                m_installIgr = true;
+                m_state = STATE_LEAVE;
+                m_menuInput = false;
                 LaunchXbe(m_dvdPlayer);
-                g_Unknown591A98 = g_IgrEnabled;
+                g_IgrOnLaunch = g_IgrEnabled;
             }
             if (g_DiscType == 1) {
                 m_autoLaunchAudio = false;
-                m_InstallIgr = true;
-                m_state = 1;
-                m_27C = false;
+                m_installIgr = true;
+                m_state = STATE_LEAVE;
+                m_menuInput = false;
                 LaunchXbe(m_audioPlayer);
-                g_Unknown591A98 = g_IgrEnabled;
+                g_IgrOnLaunch = g_IgrEnabled;
             }
             if (g_DiscType == 2 || g_DiscType == 4) {
                 m_autoLaunchAudio = false; // (the original clears this flag here)
-                m_InstallIgr = true;
-                m_state = 1;
-                m_27C = false;
+                m_installIgr = true;
+                m_state = STATE_LEAVE;
+                m_menuInput = false;
                 LaunchXbe("d:\\default.xbe");
-                g_Unknown591A98 = g_IgrEnabled;
+                g_IgrOnLaunch = g_IgrEnabled;
             }
             goto action_done;
-        case 32:
+        case ACTION_FULL_REBOOT:
             PrepareForExit();
             HalWriteSMBusValue(0x20, 0x1B, FALSE, 0);
             HalReturnToFirmware(HalHaltRoutine);
             return;
-        case 33:
-            m_state = 8;
+        case ACTION_TRAINER_MENU:
+            m_state = STATE_SUBMENU;
             m_nextMenu = &g_MenuTrainers;
             break;
-        case 34:
-            m_state = 25;
-            m_action = 0;
-            m_27C = false;
+        case ACTION_TRAINER_OPTIONS:
+            m_state = STATE_SETTINGS_IN;
+            m_action = ACTION_NONE;
+            m_menuInput = false;
             m_drawSettings = true;
-            m_EA4 = 0;
-            m_EA8 = 0;
-            m_EAC = 0;
-            m_1911 = false;
+            m_settingsFade = 0;
+            m_settingsRow = 0;
+            m_settingsTop = 0;
+            m_isSettings = false;
             OpenTrainerOptions((TrainerFile *)m_menu->GetItem(m_menu->selected)->path);
             goto action_done;
-        case 100:
-            m_state = 8;
+        case ACTION_SUBMENU:
+            m_state = STATE_SUBMENU;
             m_nextMenu = m_menu->GetItem(m_menu->selected)->submenu;
             break;
         default:
-            if (m_action >= 200 && m_action < 300) {
-                g_SelectedItem = m_action - 200;
-                m_action = 0;
-                m_27C = false;
+            if (m_action >= ACTION_ITEM_FIRST && m_action < ACTION_ITEM_END) {
+                g_SelectedItem = m_action - ACTION_ITEM_FIRST;
+                m_action = ACTION_NONE;
+                m_menuInput = false;
                 m_drawAction = true;
                 m_actionFade = 0;
                 m_progressFade = 0;
-                m_state = 11;
+                m_state = STATE_ACTION_IN;
                 m_actionYes = false;
                 OpenItem();
             }
             break;
         }
-        m_action = 0;
+        m_action = ACTION_NONE;
         goto action_done;
     leave: // fade out (state 1), then Run returns
-        m_InstallIgr = true;
-        m_state = 1;
-        m_27C = false;
+        m_installIgr = true;
+        m_state = STATE_LEAVE;
+        m_menuInput = false;
     action_done:
 
         // the servers can end the dashboard or put a message up
         if (g_DebugServer && g_DebugServer->m_quit == true) {
-            g_Unknown591A98 = g_IgrEnabled;
-            m_InstallIgr = true;
+            g_IgrOnLaunch = g_IgrEnabled;
+            m_installIgr = true;
             return;
         }
         if (m_ftp) {
             if (m_ftp->m_quit == true) {
-                g_Unknown591A98 = g_IgrEnabled;
-                m_InstallIgr = true;
+                g_IgrOnLaunch = g_IgrEnabled;
+                m_installIgr = true;
                 return;
             }
             if (m_ftp->m_message == true) {
                 m_ftp->m_message = false;
-                m_action = 0;
-                m_state = 22;
-                m_27C = false;
+                m_action = ACTION_NONE;
+                m_state = STATE_MESSAGE_IN;
+                m_menuInput = false;
                 m_drawMessage = true;
                 m_flashNow = true;
                 m_flashStep = 0;
@@ -379,69 +379,69 @@ void CEvoxDash::Run()
 
         // ---- fade / transition state ----
         switch (m_state) {
-        case 1: // fade out, then leave Run
+        case STATE_LEAVE: // fade out, then leave Run
             m_fadeAlpha += F32(0x3C23D70A); // 0.01
             if (m_fadeAlpha > F32(0x3F800000))
                 return;
             break;
-        case 2:
+        case STATE_MENU_IN:
             m_fade += F32(0x41000000);
             if (m_fade > F32(0x437F0000)) {
                 m_fade = F32(0x437F0000);
                 goto back_to_idle;
             }
             break;
-        case 4:
+        case STATE_MENU_OUT:
             m_fade -= F32(0x41000000);
             if (m_fade < 0.0f) {
-                m_27C = false;
+                m_menuInput = false;
                 m_fade = 0;
                 goto idle;
             }
             break;
-        case 5:
+        case STATE_BACKUP_IN:
             FadeDown(m_fade);
-            if ((m_E9C += 8) > 0xFF) {
+            if ((m_backupFade += 8) > 0xFF) {
                 StartBackup();
-                m_state = 6;
-                m_E9C = 0xFF;
+                m_state = STATE_BACKUP;
+                m_backupFade = 0xFF;
             }
             break;
-        case 7:
+        case STATE_BACKUP_OUT:
             FadeUp(m_fade);
-            if ((m_E9C -= 8) < 0) {
-                m_drawE98 = false;
-                m_E9C = 0;
+            if ((m_backupFade -= 8) < 0) {
+                m_drawBackup = false;
+                m_backupFade = 0;
                 goto back_to_idle;
             }
             break;
-        case 8: // to m_nextMenu, remembering this one
+        case STATE_SUBMENU: // to m_nextMenu, remembering this one
             m_fade -= F32(0x41000000);
             if (m_fade < 0.0f) {
-                m_state = 2;
-                m_27C = false;
+                m_state = STATE_MENU_IN;
+                m_menuInput = false;
                 m_fade = 0;
                 g_MenuStack[g_MenuDepth++] = m_menu;
                 m_menu = m_nextMenu;
             }
             break;
-        case 9: // back to m_nextMenu
+        case STATE_MENU_BACK: // back to m_nextMenu
             m_fade -= F32(0x41000000);
             if (m_fade < 0.0f) {
-                m_state = 2;
-                m_27C = false;
+                m_state = STATE_MENU_IN;
+                m_menuInput = false;
                 m_fade = 0;
                 m_menu = m_nextMenu;
             }
             break;
-        case 11:
+        case STATE_ACTION_IN:
             FadeDown(m_fade);
             if ((m_actionFade += 8) > 0xFF) {
-                m_state = 12;
+                m_state = STATE_ACTION;
                 m_actionFade = 0xFF;
             }
             break;
-        case 13:
+        case STATE_ACTION_OUT:
             FadeUp(m_fade);
             if ((m_actionFade -= 8) < 0) {
                 m_drawAction = false;
@@ -449,30 +449,30 @@ void CEvoxDash::Run()
                 goto back_to_idle;
             }
             break;
-        case 14:
+        case STATE_ACTION_RUNNING:
             if (!g_ActionThread)
-                m_state = 16;
+                m_state = STATE_PROGRESS_OUT;
             break;
-        case 15:
+        case STATE_PROGRESS_IN:
             if ((m_progressFade += 8) > 0xFF)
                 m_progressFade = 0xFF;
             if ((m_actionFade -= 8) < 0) {
-                m_state = 14;
+                m_state = STATE_ACTION_RUNNING;
                 m_actionFade = 0;
                 StartActionScript();
             }
             break;
-        case 16:
+        case STATE_PROGRESS_OUT:
             FadeUp(m_fade);
             if ((m_progressFade -= 8) < 0) {
-                m_state = 0;
-                m_27C = true;
+                m_state = STATE_IDLE;
+                m_menuInput = true;
                 m_drawAction = false;
                 m_actionFade = 0;
                 if (g_ActionFlash == true) {
-                    m_action = 0;
-                    m_state = 22;
-                    m_27C = false;
+                    m_action = ACTION_NONE;
+                    m_state = STATE_MESSAGE_IN;
+                    m_menuInput = false;
                     m_drawMessage = true;
                     m_flashNow = true;
                     m_flashStep = 0;
@@ -481,77 +481,77 @@ void CEvoxDash::Run()
                 }
             }
             break;
-        case 22: // message in
+        case STATE_MESSAGE_IN: // message in
             if ((m_messageFade += 8) > 0xFF) {
-                m_state = 23;
+                m_state = STATE_MESSAGE;
                 m_messageFade = 0xFF;
             }
             break;
-        case 24: // message out
+        case STATE_MESSAGE_OUT: // message out
             if ((m_messageFade -= 8) < 0) {
                 m_drawMessage = false;
                 m_messageFade = 0;
                 goto back_to_idle;
             }
             break;
-        case 25: // settings in
+        case STATE_SETTINGS_IN: // settings in
             FadeDown(m_fade);
-            if ((m_EA4 += 8) > 0xFF) {
-                m_state = 26;
-                m_EA4 = 0xFF;
+            if ((m_settingsFade += 8) > 0xFF) {
+                m_state = STATE_SETTINGS;
+                m_settingsFade = 0xFF;
                 m_drawMenu = false;
             }
             break;
-        case 27: // settings out
+        case STATE_SETTINGS_OUT: // settings out
             m_drawMenu = true;
             FadeUp(m_fade);
-            if ((m_EA4 -= 8) < 0) {
+            if ((m_settingsFade -= 8) < 0) {
                 m_drawSettings = false;
-                m_EA4 = 0;
+                m_settingsFade = 0;
                 goto back_to_idle;
             }
             break;
         }
         goto state_done;
     back_to_idle:
-        m_27C = true;
+        m_menuInput = true;
     idle:
-        m_state = 0;
+        m_state = STATE_IDLE;
     state_done:
 
         // auto-launch what was inserted
         if (m_autoLaunchDvd && g_DiscType == 0) {
             m_autoLaunchDvd = false;
-            m_InstallIgr = true;
-            m_state = 1;
-            m_27C = false;
+            m_installIgr = true;
+            m_state = STATE_LEAVE;
+            m_menuInput = false;
             LaunchXbe(m_dvdPlayer);
-            g_Unknown591A98 = g_IgrEnabled;
+            g_IgrOnLaunch = g_IgrEnabled;
         }
         if (m_autoLaunchAudio && g_DiscType == 1) {
             m_autoLaunchAudio = false;
-            m_InstallIgr = true;
-            m_state = 1;
-            m_27C = false;
+            m_installIgr = true;
+            m_state = STATE_LEAVE;
+            m_menuInput = false;
             LaunchXbe(m_audioPlayer);
-            g_Unknown591A98 = g_IgrEnabled;
+            g_IgrOnLaunch = g_IgrEnabled;
         }
         if (m_autoLaunchGames && g_DiscType == 2) {
             m_autoLaunchAudio = false; // (the original clears this flag, not AutoLaunchGames)
-            m_InstallIgr = true;
-            m_state = 1;
-            m_27C = false;
+            m_installIgr = true;
+            m_state = STATE_LEAVE;
+            m_menuInput = false;
             LaunchXbe("d:\\default.xbe");
-            g_Unknown591A98 = g_IgrEnabled;
+            g_IgrOnLaunch = g_IgrEnabled;
         }
 
         // Back, B, backspace (or keyboard code 0x27): input for the screen saver, and back to the
         // previous menu when idle
         if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_BACK) || m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_B] ||
-            m_key == 8 || m_keyboard == 0x27) {
-            g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
-            if (m_state == 0 && g_MenuDepth) {
-                m_state = 9;
+            m_key == 8 || m_remoteButton == 0x27) {
+            ResetScreenSaver();
+            if (m_state == STATE_IDLE && g_MenuDepth) {
+                m_state = STATE_MENU_BACK;
                 m_nextMenu = g_MenuStack[--g_MenuDepth];
             }
         }

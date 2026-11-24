@@ -72,7 +72,7 @@ CMenuItem *CMenu::AddItem(BYTE selectable, DWORD colour, int action, const WCHAR
     it->text = t;
     it->path = p;
     it->trainer = 0;
-    it->m_20 = 0;
+    it->extraFlags = 0;
     it->flags = 0;
     if (!first) {
         count++;

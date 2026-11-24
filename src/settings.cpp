@@ -98,8 +98,6 @@ static int g_KeyCol;         // 0x47BF2C
 static int g_KeyBlink;       // 0x47BF30 cursor blink counter
 static int g_SettingsRepeat; // 0x47BF24 frames until the next key / move
 
-static void ResetScreenSaver() { g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000; }
-
 // ---- OpenSettings (0x1A150): build the table --------------------------------------------------
 
 struct TableBuilder {
@@ -287,7 +285,7 @@ static const KeyboardKey &Key(int row, int col) { return g_Keyboard->keys[row][c
 
 void CEvoxDash::DrawSettings()
 {
-    const DWORD a = (DWORD)m_EA4; // the screen's fade, 0..255
+    const DWORD a = (DWORD)m_settingsFade; // the screen's fade, 0..255
     const DWORD frame = (a / 2) << 24 | 0xFFFFFF;
     DrawRect(F32(0x42A00000), F32(0x42700000), F32(0x440C0000), F32(0x43CB0000), // (80, 60) - (560, 406)
              (DWORD)(long long)((float)a * F32(0x3F19999A)) << 24 | 0x80, frame);    // * 0.6
@@ -295,15 +293,15 @@ void CEvoxDash::DrawSettings()
              (DWORD)(long long)((float)a * F32(0x3E99999A)) << 24 | 0x80, frame);    // * 0.3
     m_font.Begin();
     m_font.DrawText(F32(0x43A00000), F32(0x42800000), a << 24 | 0xFFFFFF, // (320, 64)
-                    m_1911 ? L"Settings / Info" : m_screenTitle, XBFONT_CENTER_X);
+                    m_isSettings ? L"Settings / Info" : m_screenTitle, XBFONT_CENTER_X);
 
-    // the highlight, then 13 rows from m_EAC
+    // the highlight, then 13 rows from m_settingsTop
     float y = F32(0x42B40000); // 90
-    float bar = (float)(m_EA8 * 24) + y;
+    float bar = (float)(m_settingsRow * 24) + y;
     DrawRect(F32(0x42BC0000), bar + F32(0x40000000), F32(0x44088000), F32(0x41C00000) + bar, // (94, +2) - (546, +24)
              (DWORD)(long long)((float)a * F32(0x3F000000)) << 24 | 0x8000, frame);
     WCHAR text[0x200];
-    for (int i = m_EAC; i < m_EAC + 13; i++, y += F32(0x41C00000)) {
+    for (int i = m_settingsTop; i < m_settingsTop + 13; i++, y += F32(0x41C00000)) {
         const SettingRow &r = g_Settings[i];
         DWORD colour = 0xC0D0E0;
         if (r.label) {
@@ -344,7 +342,7 @@ void CEvoxDash::DrawSettings()
         DrawRect(kx, ky, kx + k.w, ky + k.h, 0xFF000080, frame);
         float top = ky + F32(0x40800000); // + 4
         DrawRect(kx + F32(0x40800000), top, kx + k.w - F32(0x40800000), ky + F32(0x41E00000), 0xFF000080, frame);
-        m_font.DrawText(k.w * F32(0x3F000000) + kx, top, a << 24 | 0xFFFFFF, g_Settings[m_EAC + m_EA8].label,
+        m_font.DrawText(k.w * F32(0x3F000000) + kx, top, a << 24 | 0xFFFFFF, g_Settings[m_settingsTop + m_settingsRow].label,
                         XBFONT_CENTER_X);
         ky += F32(0x41F00000); // + 30
         if (k.edit) {
@@ -374,7 +372,7 @@ void CEvoxDash::DrawSettings()
         m_font.End();
     }
 
-    if (m_state != 26)
+    if (m_state != STATE_SETTINGS)
         return;
 
     int steps = 0;
@@ -383,11 +381,11 @@ void CEvoxDash::DrawSettings()
             ResetScreenSaver();
             steps = (int)(long long)((float)m_DefaultGamepad.bAnalogButtons[XINPUT_GAMEPAD_LEFT_TRIGGER] * F32(0x3CA3D70A));
         }
-        switch (m_keyboard) { // the keyboard's page keys
-        case 0x1C: steps = 8; m_keyboard = 0x58; break;
-        case 0x1D: steps = 8; m_keyboard = 0x59; break;
-        case 0x20: steps = 2; m_keyboard = 0x58; break;
-        case 0x22: steps = 2; m_keyboard = 0x59; break;
+        switch (m_remoteButton) { // the keyboard's page keys
+        case 0x1C: steps = 8; m_remoteButton = 0x58; break;
+        case 0x1D: steps = 8; m_remoteButton = 0x59; break;
+        case 0x20: steps = 2; m_remoteButton = 0x58; break;
+        case 0x22: steps = 2; m_remoteButton = 0x59; break;
         }
     }
 
@@ -407,33 +405,33 @@ void CEvoxDash::DrawSettings()
             continue;
         }
         if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_BACK) || m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_B] ||
-            m_key == 8 || m_keyboard == 0x27) {
+            m_key == 8 || m_remoteButton == 0x27) {
             ResetScreenSaver();
-            m_state = 27;
+            m_state = STATE_SETTINGS_OUT;
         }
-        if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) || m_key == 0x28 || m_keyboard == 0x58) {
+        if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) || m_key == 0x28 || m_remoteButton == 0x58) {
             ResetScreenSaver();
-            if (m_EAC + m_EA8 + 1 != g_SettingsCount) {
-                if (m_EA8 >= 12)
-                    m_EAC++;
+            if (m_settingsTop + m_settingsRow + 1 != g_SettingsCount) {
+                if (m_settingsRow >= 12)
+                    m_settingsTop++;
                 else
-                    m_EA8++;
+                    m_settingsRow++;
                 g_SettingsRepeat += 8;
             }
         }
-        if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) || m_key == 0x26 || m_keyboard == 0x59) {
+        if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) || m_key == 0x26 || m_remoteButton == 0x59) {
             ResetScreenSaver();
-            if (m_EA8) {
-                m_EA8--;
+            if (m_settingsRow) {
+                m_settingsRow--;
                 g_SettingsRepeat += 8;
-            } else if (m_EAC) {
-                m_EAC--;
+            } else if (m_settingsTop) {
+                m_settingsTop--;
                 g_SettingsRepeat += 8;
             }
         }
-        if (m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_key == 0x0D || m_keyboard == 0xF4) {
+        if (m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_key == 0x0D || m_remoteButton == 0xF4) {
             ResetScreenSaver();
-            SettingRow &r = g_Settings[m_EAC + m_EA8];
+            SettingRow &r = g_Settings[m_settingsTop + m_settingsRow];
             switch (r.type) {
             case SETTING_YESNO:
                 g_Keyboard = &s_YesNoKeyboard;
@@ -460,14 +458,14 @@ void CEvoxDash::DrawSettings()
             }
             case SETTING_SAVE:
                 SaveSettings();
-                m_state = 27;
+                m_state = STATE_SETTINGS_OUT;
                 break;
             case SETTING_EXIT:
-                m_state = 27;
+                m_state = STATE_SETTINGS_OUT;
                 break;
             case SETTING_SAVE_TRAINER:
                 SaveTrainerOptions();
-                m_state = 27;
+                m_state = STATE_SETTINGS_OUT;
                 break;
             }
         }
@@ -477,10 +475,10 @@ void CEvoxDash::DrawSettings()
 // the keyboard's input (part of DrawSettings in the original)
 void CEvoxDash::KeyboardInput()
 {
-    SettingRow &row = g_Settings[m_EAC + m_EA8];
+    SettingRow &row = g_Settings[m_settingsTop + m_settingsRow];
     const XBGAMEPAD &pad = m_DefaultGamepad;
 
-    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) || m_keyboard == 0x58) {
+    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) || m_remoteButton == 0x58) {
         ResetScreenSaver();
         if (g_KeyCol == 13)
             g_KeyCol = 12;
@@ -491,7 +489,7 @@ void CEvoxDash::KeyboardInput()
         g_KeyRow = r;
         g_SettingsRepeat += 8;
     }
-    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) || m_keyboard == 0x59) {
+    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) || m_remoteButton == 0x59) {
         ResetScreenSaver();
         if (g_KeyCol == 13)
             g_KeyCol = 12;
@@ -502,7 +500,7 @@ void CEvoxDash::KeyboardInput()
         g_KeyRow = r;
         g_SettingsRepeat += 8;
     }
-    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) || m_keyboard == 0x57 || m_key == 0x27) {
+    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) || m_remoteButton == 0x57 || m_key == 0x27) {
         ResetScreenSaver();
         int c = g_KeyCol;
         do
@@ -511,7 +509,7 @@ void CEvoxDash::KeyboardInput()
         g_KeyCol = c;
         g_SettingsRepeat += 8;
     }
-    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) || m_keyboard == 0x56 || m_key == 0x25) {
+    if ((pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) || m_remoteButton == 0x56 || m_key == 0x25) {
         ResetScreenSaver();
         int c = g_KeyCol;
         do
@@ -545,14 +543,14 @@ void CEvoxDash::KeyboardInput()
             g_KeyBlink = 0;
         }
     }
-    if (pad.bPressedAnalogButtons[XINPUT_GAMEPAD_B] || m_key == 0x1B || m_keyboard == 0x27) { // cancel
+    if (pad.bPressedAnalogButtons[XINPUT_GAMEPAD_B] || m_key == 0x1B || m_remoteButton == 0x27) { // cancel
         ResetScreenSaver();
         g_SettingsRepeat += 8;
         g_KeyboardOpen = false;
     }
     // typed letters, digits and '.' (not for Yes / No), while the text fits
     if (g_Keyboard != &s_YesNoKeyboard) {
-        char c = (char)m_keyFlags;
+        char c = (char)m_keyAscii;
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.') {
             ResetScreenSaver();
             float w, h;
@@ -563,7 +561,7 @@ void CEvoxDash::KeyboardInput()
             }
         }
     }
-    if (pad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_keyboard == 0xF4 || m_key == 0x0D) {
+    if (pad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_remoteButton == 0xF4 || m_key == 0x0D) {
         ResetScreenSaver();
         const KeyboardKey &key = Key(g_KeyRow, g_KeyCol);
         switch (key.code) {

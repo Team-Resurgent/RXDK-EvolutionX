@@ -244,16 +244,16 @@ void CEvoxDash::InitItems()
             }
         } else {
             if (g_MenuBios.count) // BIOS images found
-                g_MenuBios.AddItem(0, 1, -1, L"", nullptr);
-            g_MenuMain.AddItem(1, 1, 3, L"MS Dashboard", nullptr);
-            g_MenuMain.AddItem(1, 1, 5, L"Reboot", nullptr);
-            g_MenuMain.AddItem(1, 1, 10, L"Power Off", nullptr);
-            g_MenuMain.AddItem(1, 1, 9, L"Settings", nullptr);
-            g_MenuMain.AddItem(1, 1, 11, L"Backup", nullptr);
+                g_MenuBios.AddItem(0, 1, ACTION_END_OF_MENU, L"", nullptr);
+            g_MenuMain.AddItem(1, 1, ACTION_MS_DASH, L"MS Dashboard", nullptr);
+            g_MenuMain.AddItem(1, 1, ACTION_QUICK_REBOOT, L"Reboot", nullptr);
+            g_MenuMain.AddItem(1, 1, ACTION_POWER_OFF, L"Power Off", nullptr);
+            g_MenuMain.AddItem(1, 1, ACTION_SETTINGS, L"Settings", nullptr);
+            g_MenuMain.AddItem(1, 1, ACTION_BACKUP, L"Backup", nullptr);
             if (g_MenuBios.count)
-                g_MenuMain.AddItem(1, 1, 1, L"Flash BIOS", nullptr);
+                g_MenuMain.AddItem(1, 1, ACTION_BIOS_MENU, L"Flash BIOS", nullptr);
         }
-        g_MenuMain.AddItem(0, 1, -1, L"", nullptr); // the end marker
+        g_MenuMain.AddItem(0, 1, ACTION_END_OF_MENU, L"", nullptr); // the end marker
         if (m_itemsFile)
             fclose(m_itemsFile);
         g_Ini->Unlock();
@@ -264,7 +264,7 @@ void CEvoxDash::InitItems()
     }
 
     g_MenuMain.ResetSelection();
-    g_Menu47BC60.ResetSelection();
+    g_MenuAction4.ResetSelection();
     g_MenuBios.ResetSelection();
     g_MenuSkins.ResetSelection();
     g_MenuTrainers.ResetSelection();
@@ -280,68 +280,68 @@ void CEvoxDash::DrawMenu()
              m_barColor2 | barAlpha); // (100, 342) - (540, 362)
 
     int steps = (int)(long long)((float)m_DefaultGamepad.bAnalogButtons[XINPUT_GAMEPAD_LEFT_TRIGGER] * F32(0x3CA3D70A));
-    switch (m_keyboard) { // the keyboard's page keys
+    switch (m_remoteButton) { // the remote's repeating buttons move 8 or 2 items
     case 0x1C:
         steps = 8;
-        m_keyboard = 0x58;
+        m_remoteButton = 0x58;
         break;
     case 0x1D:
         steps = 8;
-        m_keyboard = 0x59;
+        m_remoteButton = 0x59;
         break;
     case 0x20:
         steps = 2;
-        m_keyboard = 0x58;
+        m_remoteButton = 0x58;
         break;
     case 0x22:
         steps = 2;
-        m_keyboard = 0x59;
+        m_remoteButton = 0x59;
         break;
     }
 
     int top;
     do {
-        m_270 = m_menu->selected;
-        if (m_27C && g_MenuRepeat == 0) {
-            if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) || m_key == 0x28 || m_keyboard == 0x58) {
-                g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
-                if (m_menu->GetItem(m_270 + 1)->action != -1) {
-                    int i = m_270;
+        m_cursor = m_menu->selected;
+        if (m_menuInput && g_MenuRepeat == 0) {
+            if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) || m_key == 0x28 || m_remoteButton == 0x58) {
+                ResetScreenSaver();
+                if (m_menu->GetItem(m_cursor + 1)->action != ACTION_END_OF_MENU) {
+                    int i = m_cursor;
                     do {
                         i++;
                         g_MenuRepeat += 9;
-                    } while (!m_menu->GetItem(i)->selectable && m_menu->GetItem(i)->action != -1);
+                    } while (!m_menu->GetItem(i)->selectable && m_menu->GetItem(i)->action != ACTION_END_OF_MENU);
                     if (m_menu->GetItem(i)->selectable == 1)
-                        m_270 = i;
+                        m_cursor = i;
                     else
                         g_MenuRepeat = 0;
                 }
             }
-            if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) || m_key == 0x26 || m_keyboard == 0x59) {
-                g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
-                if (int i = m_270) {
+            if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) || m_key == 0x26 || m_remoteButton == 0x59) {
+                ResetScreenSaver();
+                if (int i = m_cursor) {
                     do {
                         g_MenuRepeat += 9;
                         i--;
                     } while (i && !m_menu->GetItem(i)->selectable);
                     if (m_menu->GetItem(i)->selectable == 1)
-                        m_270 = i;
+                        m_cursor = i;
                     else
                         g_MenuRepeat = 0;
                 }
             }
-            if (m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_key == 0x0D || m_keyboard == 0xF4) {
-                g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
-                m_action = m_menu->GetItem(m_270)->action;
-                m_192C = m_menu->GetItem(m_270)->m_20;
-                m_ledFlags = m_menu->GetItem(m_270)->flags;
+            if (m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_key == 0x0D || m_remoteButton == 0xF4) {
+                ResetScreenSaver();
+                m_action = m_menu->GetItem(m_cursor)->action;
+                m_actionExtraFlags = m_menu->GetItem(m_cursor)->extraFlags;
+                m_ledFlags = m_menu->GetItem(m_cursor)->flags;
             }
         }
-        m_menu->selected = m_270;
+        m_menu->selected = m_cursor;
         if (g_MenuRepeat)
             g_MenuRepeat--;
         // ease the scroll towards the selection, 2 pixels a step (20 per item, selection 5th)
-        int target = (m_270 - 5) * 20;
+        int target = (m_cursor - 5) * 20;
         if (m_menu->scroll != target)
             m_menu->scroll += m_menu->scroll > target ? -2 : 2;
         top = m_menu->scroll / 20;
@@ -351,7 +351,7 @@ void CEvoxDash::DrawMenu()
     for (int y = 0, i = top; y < 220; y += 20, i++) {
         if (i < 0)
             continue;
-        if (m_menu->GetItem(i)->action == -1)
+        if (m_menu->GetItem(i)->action == ACTION_END_OF_MENU)
             return;
         float t = (float)(y - m_menu->scroll % 20);
         float s = sinf(t * F32(0x40490FDB) * F32(0x3BA4A9CF)); // t * pi / 199

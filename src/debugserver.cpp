@@ -60,7 +60,6 @@ static const struct {
     {"XBEINFO", CMD_XBEINFO},
 };
 
-static void SendText(CSocket *s, const char *text) { s->Send(text, strlen(text)); }
 static DWORD WINAPI DebugListenThread(LPVOID param);
 
 // 0x22FA0: the first server reads [RDTOOLS] and starts the listening thread
@@ -80,7 +79,7 @@ CDebugServer::CDebugServer()
         m_quit = false;
     }
     g_DebugServers++;
-    m_1C = false;
+    m_unused1C = false;
 }
 
 // 0x21900

@@ -20,7 +20,7 @@ static const BYTE s_EntryCall[6] = {0xFF, 0x15, 0x28, 0x01, 0x01, 0x00};
 // where the loader keeps what IgrInstall fills in (0x5964FF.. in the original's text section)
 enum {
     LOADER_GAME_REGION = 0x8C,   // 0x5964FF g_GameRegion (set by main)
-    LOADER_596500 = 0x8D,        // 0x596500 g_Unknown596500 (set by main)
+    LOADER_IGR = 0x8D,        // 0x596500 g_LoaderIgr (set by main)
     LOADER_IMPORTS = 0x8E,       // 0x596501 kernel addresses, "EvoxEvox..." until filled
 };
 // 0x596420: the kernel exports the loader calls, in its order
@@ -87,7 +87,7 @@ void IgrInstall()
     memset((void *)0x80000000, 0, 0x400);
     memcpy(LOADER_ADDRESS, g_IgrLoader, g_IgrLoaderSize);
     LOADER_ADDRESS[LOADER_GAME_REGION] = g_GameRegion;
-    LOADER_ADDRESS[LOADER_596500] = g_Unknown596500;
+    LOADER_ADDRESS[LOADER_IGR] = g_LoaderIgr;
     for (int i = 0; i < 8; i++)
         ((DWORD *)(LOADER_ADDRESS + LOADER_IMPORTS))[i] = KernelExport(s_LoaderImports[i]);
 

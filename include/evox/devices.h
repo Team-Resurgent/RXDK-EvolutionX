@@ -1,6 +1,6 @@
 // The DVD remote and the USB keyboard (0x23D70..0x240E4 in the original). Create opens them;
-// Run asks each frame for the remote's button (m_keyboard, the menus' page keys) and for a
-// keystroke (m_keystroke / m_key / m_keyFlags).
+// Run asks each frame for the remote's button (m_remoteButton, the menus' page keys) and for a
+// keystroke (m_keystroke / m_key / m_keyAscii).
 #pragma once
 #include <xtl.h>
 #include <xkbd.h>

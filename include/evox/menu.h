@@ -14,7 +14,7 @@ struct CMenuItem {           // 0x2C bytes
     CMenuItem *prev;         // +0x14
     CMenuItem *next;         // +0x18
     CMenu *submenu;          // +0x1C action 100
-    DWORD m_20;              // +0x20
+    DWORD extraFlags;        // +0x20 the keywords' first flag word: none sets it, so always 0
     DWORD flags;             // +0x24 0x100, 0x200 trainer, 0x400/0x800 IGR, 0x3000 region; LED bits
     char *trainer;           // +0x28 trainer path (action 8, flag 0x200)
 };

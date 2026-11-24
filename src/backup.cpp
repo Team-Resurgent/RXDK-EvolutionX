@@ -124,17 +124,17 @@ void StartBackup()
         g_BackupThread = CreateThread(nullptr, 0, BackupThread, nullptr, 0, nullptr);
 }
 
-// 0x18D10 (m_drawE98): "Backingup :)" in a bar, fading with m_E9C; state 6 waits here for the
+// 0x18D10 (m_drawBackup): "Backingup :)" in a bar, fading with m_backupFade; state 6 waits here for the
 // thread, then fades back (state 7)
 void CEvoxDash::DrawBackupBox()
 {
-    DWORD fill = (DWORD)(long long)((double)m_E9C * F32(0x3F000000)) << 24 | 0x80;
-    DWORD border = (DWORD)(long long)((double)m_E9C * F32(0x3E4CCCCD)) << 24 | 0xC0C0C0;
+    DWORD fill = (DWORD)(long long)((double)m_backupFade * F32(0x3F000000)) << 24 | 0x80;
+    DWORD border = (DWORD)(long long)((double)m_backupFade * F32(0x3E4CCCCD)) << 24 | 0xC0C0C0;
     DrawRect(F32(0x43100000), F32(0x438E0000), F32(0x43F80000), F32(0x439A0000), fill, border); // (144, 284)-(496, 308)
     m_font.Begin();
-    m_font.DrawText(F32(0x43A00000), F32(0x438E0000), (DWORD)m_E9C << 24 | 0xC0C0C0, L"Backingup :)",
+    m_font.DrawText(F32(0x43A00000), F32(0x438E0000), (DWORD)m_backupFade << 24 | 0xC0C0C0, L"Backingup :)",
                     XBFONT_CENTER_X);
     m_font.End();
-    if (m_state == 6 && !g_BackupThread)
-        m_state = 7;
+    if (m_state == STATE_BACKUP && !g_BackupThread)
+        m_state = STATE_BACKUP_OUT;
 }

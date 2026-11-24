@@ -367,8 +367,6 @@ char *CFtpServer::ConvertName(const char *name, bool directory)
     return out;
 }
 
-static void SendText(CSocket *s, const char *text) { s->Send(text, strlen(text)); }
-
 // 0x13650: LIST. "/" lists the drives (and validates F:, which formats it if it is not FATX);
 // elsewhere "ls -l" style lines, dated by the creation time.
 void CFtpServer::List(CSocket *data, const char *cwd)

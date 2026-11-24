@@ -19,7 +19,7 @@ public:
     CSocket *m_listen;               // +0x004 TCP 731
     sockaddr_in m_addr;              // +0x008
     HANDLE m_thread;                 // +0x018 the listening thread
-    bool m_1C;                       // +0x01C (cleared by the constructor, otherwise unused)
+    bool m_unused1C;                 // +0x01C (cleared by the constructor, otherwise unused)
     char m_titleDir[0x200];          // +0x01D TITLE dir=, with a trailing backslash
     char m_titleName[0x200];         // +0x21D TITLE name=
     bool m_quit;                     // +0x41D a GO / MAGICBOOT session ended: the dashboard launches

@@ -30,10 +30,10 @@ static void DumpMenu(const char *name, CMenu *menu, int depth)
         Log("menu %s: %d items\n", name, menu->count);
     for (CMenuItem *it = menu->first; it; it = it->next) {
         const char *path = it->path;
-        if (it->action == 34 && path)
+        if (it->action == ACTION_TRAINER_OPTIONS && path)
             path = ((TrainerFile *)path)->path;
         Log("%*s%d %06x %3d \"%ls\" %s %x/%x%s%s\n", depth * 2 + 2, "", it->selectable, it->colour, it->action,
-            it->text, path ? path : "-", it->m_20, it->flags, it->trainer ? " trainer " : "",
+            it->text, path ? path : "-", it->extraFlags, it->flags, it->trainer ? " trainer " : "",
             it->trainer ? it->trainer : "");
         if (it->submenu)
             DumpMenu(name, it->submenu, depth + 1);
@@ -59,7 +59,7 @@ void CEvoxDash::RunTestScript()
             m_DefaultGamepad.wPressedButtons |= (WORD)s.arg;
             break;
         case 'K':
-            m_keyFlags = (BYTE)s.arg;
+            m_keyAscii = (BYTE)s.arg;
             break;
         case 'L':
             Log("test %u: %s\n", m_frame, s.text);

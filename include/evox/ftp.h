@@ -32,7 +32,7 @@ public:
     CSocket *m_listen;               // +0x004
     sockaddr_in m_addr;              // +0x008 port 21, any address
     sockaddr_in m_dataAddr;          // +0x018 PORT's address
-    BYTE unk028[0x28];
+    BYTE unused028[0x28];            // +0x028 never read
     char m_convName[0x100];          // +0x050 ConvertName's result
     char m_formatPath[0x100];        // +0x150 FORMATPATH's partition
     ANSI_STRING m_formatVolume;      // +0x250 over m_formatPath

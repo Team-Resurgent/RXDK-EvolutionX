@@ -92,7 +92,7 @@ void IgrFinish()
     XWriteTitleInfoNoReboot(g_LaunchXbe, g_LaunchDevice, 0xDEADBEEF, 0x1234578, &data);
     if (g_HasTrainer == true)
         LaunchDataPage->Header.dwLaunchDataType = 3;
-    if (g_Unknown95D64 != 1) // items with flag 0x100: "device\dir\name.xbe" instead of "device\dir;name.xbe"
+    if (g_LaunchMountsD != 1) // items with flag 0x100: "device\dir\name.xbe" instead of "device\dir;name.xbe"
         if (char *p = strrchr(LaunchDataPage->Header.szLaunchPath, ';'))
             *p = '\\';
 #ifdef EVOX_TEST_ACTION

@@ -2,7 +2,7 @@
 // It began as the XDK sample framework's CXBApplication: the first 0x184 bytes keep that layout
 // (present parameters, D3D objects, timing, gamepads). EvoX folded Initialize / FrameMove /
 // Render into it and made Run a menu and fade state machine. Fields keep their offsets in the
-// original; names say what the code does with them, "m_<offset>" where that is not known yet.
+// original; names say what the code does with them, "m_unused<offset>" for those EvoX never reads.
 #pragma once
 #include <xtl.h>
 #include <stdio.h>
@@ -25,6 +25,55 @@ struct SkinLabel {          // 0x418 bytes, a text label of the skin
 };
 
 // ---- the dashboard -------------------------------------------------------------------------
+// m_action: a menu item's command, run by Run in the next frame
+enum DashAction {
+    ACTION_NONE = 0,
+    ACTION_BIOS_MENU = 1,        // Flash_Bios: the q:\bios menu
+    ACTION_FLASH_BIOS_FILE = 2,  // Flash_Bios_File, the BIOS menu's items: the "Flash BIOS" box
+    ACTION_MS_DASH = 3,          // MS_Dash
+    ACTION_MENU4 = 4,            // g_MenuAction4 (no keyword or built-in item uses it)
+    ACTION_QUICK_REBOOT = 5,     // Quick_Reboot, the built-in "Reboot"
+    ACTION_LAUNCH = 8,           // an XBE item
+    ACTION_SETTINGS = 9,         // Settings
+    ACTION_POWER_OFF = 10,       // Power_Off
+    ACTION_BACKUP = 11,          // Backup
+    ACTION_LOAD_SKIN = 12,       // the skin menu's items
+    ACTION_SKIN_MENU = 13,       // Skins
+    ACTION_LAUNCH_DISC = 14,     // Launch_DVD: what is in the drive
+    ACTION_FULL_REBOOT = 32,     // Full_Reboot
+    ACTION_TRAINER_MENU = 33,    // Trainer
+    ACTION_TRAINER_OPTIONS = 34, // the trainer menu's items
+    ACTION_SUBMENU = 100,        // a [Menu] Section
+    ACTION_ITEM_FIRST = 200,     // 200..299: [Action_NN] item (action - 200), see OpenItem
+    ACTION_ITEM_END = 300,
+    ACTION_END_OF_MENU = -1,     // a menu's last item (not a command)
+};
+
+// m_state: the screen's fade / transition; "_IN" and "_OUT" states move a fade by 8 a frame
+enum DashState {
+    STATE_IDLE = 0,              // the menu takes input
+    STATE_LEAVE = 1,             // fade to black, then Run returns
+    STATE_MENU_IN = 2,
+    STATE_MENU_OUT = 4,          // (nothing sets it)
+    STATE_BACKUP_IN = 5,
+    STATE_BACKUP = 6,            // DrawBackupBox waits for the backup thread
+    STATE_BACKUP_OUT = 7,
+    STATE_SUBMENU = 8,           // fade out, then m_nextMenu, remembering this one
+    STATE_MENU_BACK = 9,         // fade out, then back to m_nextMenu
+    STATE_ACTION_IN = 11,        // the action dialog
+    STATE_ACTION = 12,           // DrawActionBox waits for Yes / No
+    STATE_ACTION_OUT = 13,
+    STATE_ACTION_RUNNING = 14,   // the steps run in g_ActionThread
+    STATE_PROGRESS_IN = 15,      // the dialog makes way for the progress box
+    STATE_PROGRESS_OUT = 16,
+    STATE_MESSAGE_IN = 22,       // the "Flash BIOS" box
+    STATE_MESSAGE = 23,          // DrawMessage runs the flash steps
+    STATE_MESSAGE_OUT = 24,
+    STATE_SETTINGS_IN = 25,      // the settings screen
+    STATE_SETTINGS = 26,         // DrawSettings takes input
+    STATE_SETTINGS_OUT = 27,
+};
+
 class CEvoxDash {
 public:
     CEvoxDash();          // 0x1CFE0
@@ -63,7 +112,7 @@ public:
     void ParseMenuSection(CMenu *menu);               // 0x19B20 a [Menu] section block
     void AutoAddItem(CMenu *menu, char *dir, int depth); // 0x191B0 the games in a folder
     const WCHAR *GetXbeTitle(const char *path);       // 0x18DC0
-    void DrawBackupBox();                             // 0x18D10 (m_drawE98) src/backup.cpp
+    void DrawBackupBox();                             // 0x18D10 (m_drawBackup) src/backup.cpp
     void OpenItem();                                  // 0x1CAC0 actions 200..299 (src/actions.cpp)
     void DrawActionBox();                             // 0x187B0 (m_drawAction) its dialog
     void DrawMessage();                               // 0x18E30 (m_drawMessage) the "Flash BIOS" box (src/flash.cpp)
@@ -92,7 +141,7 @@ public:
     IDirect3DTexture8 *m_bgTexture;  // +0x1E4 the skin's background
     IDirect3DVertexBuffer8 *m_bgVB;  // +0x1E8 its quad
     IDirect3DTexture8 *m_fadeTexture; // +0x1EC drawn in state 1
-    DWORD m_1F0;
+    DWORD m_unused1F0;               // +0x1F0
     BOOL m_hasPersisted;             // +0x1F4 the last title's screen is shown and faded out
     IDirect3DSurface8 *m_persistSurface; // +0x1F8
     IDirect3DTexture8 *m_persistTexture; // +0x1FC
@@ -102,11 +151,11 @@ public:
     BYTE pad265[3];
     int m_labelAlpha;                // +0x268 0..255
     float m_persistAlpha;            // +0x26C
-    int m_270;                       // +0x270 the selection while DrawMenu handles input
+    int m_cursor;                    // +0x270 the selection while DrawMenu handles input
     bool m_drawMenu;                 // +0x274
     BYTE pad275[3];
-    int m_278;
-    bool m_27C;                      // +0x27C
+    int m_unused278;                 // +0x278 set to -100 by Run, never read
+    bool m_menuInput;                // +0x27C DrawMenu takes the pad (off while an action runs)
     BYTE pad27D[3];
     int m_action;                    // +0x280 command for the next frame (see Run)
     int m_state;                     // +0x284 fade / screen state (see Run)
@@ -118,13 +167,15 @@ public:
     bool m_drawAction;               // +0xE8D
     BYTE padE8E[2];
     int m_actionFade, m_progressFade; // +0xE90 the dialog's and the progress box's fade, 0..255
-    bool m_drawE98;                  // +0xE98
+    bool m_drawBackup;               // +0xE98 the "Backingup :)" bar
     BYTE padE99[3];
-    int m_E9C;
+    int m_backupFade;                // +0xE9C its fade, 0..255
     bool m_drawSettings;             // +0xEA0
     BYTE padEA1[3];
-    int m_EA4, m_EA8, m_EAC;
-    BYTE unkEB0[0xFB0 - 0xEB0];
+    int m_settingsFade;              // +0xEA4 the settings screen's fade, 0..255
+    int m_settingsRow;               // +0xEA8 the selected row on screen, 0..12
+    int m_settingsTop;               // +0xEAC the first row shown
+    BYTE unusedEB0[0xFB0 - 0xEB0];   // +0xEB0
     CFtpServer *m_ftp;               // +0xFB0
     DWORD m_frame;                   // +0xFB4
     float m_fade;                    // +0xFB8 screen fade, 0..255
@@ -137,8 +188,8 @@ public:
     char m_message[0x100];           // +0xFD0 the BIOS file to flash
     bool m_flashNow;                 // +0x10D0 flash without asking for Y (FTP FLASHBIOS, flashbios steps)
     BYTE pad10D1[3];
-    int m_10D4;
-    BYTE unk10D8[4];
+    int m_unused10D4;                // +0x10D4 cleared by Run, never read
+    BYTE unused10D8[4];              // +0x10D8
     FILE *m_itemsFile;               // +0x10DC q:\items.txt being written
     char *m_menuLine;                // +0x10E0 [Menu] line being parsed
     float m_fadeAlpha;               // +0x10E4 state 1: fade out before leaving Run
@@ -157,21 +208,21 @@ public:
     int m_argc;                      // +0x150C Tokenize: the words of the last line
     char *m_argv[0x100];             // +0x1510 (unused ones point at g_EmptyArg)
     bool m_noTrainers;               // +0x1910 ScanTrainers found none
-    bool m_1911;
+    bool m_isSettings;               // +0x1911 the screen is Settings / Info, not a trainer's options
     BYTE pad1912[2];
-    const WCHAR *m_screenTitle;      // +0x1914 the settings screen's title when m_1911 is false
+    const WCHAR *m_screenTitle;      // +0x1914 the settings screen's title when m_isSettings is false
     void *m_trainer;                 // +0x1918 trainer shown in the settings screen
     int m_trainerOptions;            // +0x191C
     const BYTE *m_keystroke;         // +0x1920 last keyboard keystroke, or NULL
     BYTE m_key;                      // +0x1924 its virtual key (8 backspace, 0x2A print screen)
-    BYTE m_keyFlags;                 // +0x1925 its ASCII character (XINPUT_DEBUG_KEYSTROKE.Ascii)
+    BYTE m_keyAscii;                 // +0x1925 its ASCII character (XINPUT_DEBUG_KEYSTROKE.Ascii)
     BYTE pad1926[2];
-    int m_keyboard;                  // +0x1928 the DVD remote's button this frame (PollRemote)
-    int m_192C;
+    int m_remoteButton;              // +0x1928 the DVD remote's button this frame (PollRemote)
+    int m_actionExtraFlags;          // +0x192C the item's extraFlags (always 0)
     DWORD m_ledFlags;                // +0x1930 Chameleon LED commands
     int *m_gameRegionChoice;         // +0x1934 the Game Region row's choice (OpenSettings)
     int *m_tsrChoice;                // +0x1938 the TSR row's choice
-    bool m_InstallIgr;               // +0x193C leave Run and run the IGR steps
+    bool m_installIgr;               // +0x193C leave Run and run the IGR steps
     BYTE pad193D[3];
 };
 
@@ -182,7 +233,7 @@ extern int g_Shade;                      // 0x47BC54 screen-saver shade, 0..g_Sh
 extern DWORD g_ChameleonBlink;           // 0x94B58
 extern int g_DiscType;                   // 0x95BBC 0 video DVD, 1 audio CD, 2/4 game
 extern CMenu g_MenuMain;                 // 0x47BC84
-extern CMenu g_Menu47BC60;
+extern CMenu g_MenuAction4;
 extern CMenu g_MenuBios;                 // 0x47BCA8 q:\bios (action 2 flashes the file)
 extern CMenu g_MenuTrainers;             // 0x47BCCC q:\trainers\*.etm (action 34)
 extern CMenu g_MenuSkins;                // 0x47BCF0 q:\skin\<name>\skin.ini (action 12)

@@ -39,7 +39,7 @@ static_assert(offsetof(CEvoxDash, m_menuColour) == 0x1500, "m_menuColour");
 static_assert(offsetof(CEvoxDash, m_argc) == 0x150C, "m_argc");
 static_assert(offsetof(CEvoxDash, m_noTrainers) == 0x1910, "m_noTrainers");
 static_assert(offsetof(CEvoxDash, m_keystroke) == 0x1920, "m_keystroke");
-static_assert(offsetof(CEvoxDash, m_InstallIgr) == 0x193C, "m_InstallIgr");
+static_assert(offsetof(CEvoxDash, m_installIgr) == 0x193C, "m_installIgr");
 static_assert(offsetof(CEvoxDash, m_screenTitle) == 0x1914, "m_screenTitle");
 static_assert(offsetof(CEvoxDash, m_gameRegionChoice) == 0x1934, "m_gameRegionChoice");
 static_assert(sizeof(CEvoxDash) == 0x1940, "CEvoxDash");
@@ -84,7 +84,7 @@ CEvoxDash::CEvoxDash()
     m_drawLogo = true;
     // Not set by the original constructor (Run sets it), but main reads it when Create fails:
     // there it was stack garbage. False here.
-    m_InstallIgr = false;
+    m_installIgr = false;
 }
 
 // members m_xpr and m_font are destroyed after this, as in the original
@@ -213,11 +213,11 @@ void CEvoxDash::Render()
         DrawActionBox();
     if (m_drawSettings)
         DrawSettings();
-    if (m_drawE98)
+    if (m_drawBackup)
         DrawBackupBox();
     if (m_drawMessage)
         DrawMessage();
-    if (m_state == 1)
+    if (m_state == STATE_LEAVE)
         DrawQuad(m_fadeTexture, m_fadeAlpha, m_fadeVerts);
 
     // the last title's screen over everything, fading out

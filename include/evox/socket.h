@@ -2,6 +2,7 @@
 #pragma once
 #include <xtl.h>
 #include <winsockx.h>
+#include <string.h>
 
 class CSocket { // 4 bytes
 public:
@@ -26,3 +27,6 @@ public:
 
     SOCKET m_sock;
 };
+
+// a zero-terminated string, without the zero (the FTP and debug servers' replies)
+inline void SendText(CSocket *s, const char *text) { s->Send(text, (int)strlen(text)); }

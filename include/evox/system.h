@@ -2,7 +2,16 @@
 // dashboard, the drive and Backup.
 #pragma once
 #include <xtl.h>
+#include <string.h>
 #include "evox/chameleon.h"
+
+// a DWORD at any alignment in file data (XBE headers, .etm trainers)
+inline DWORD Read32(const BYTE *p)
+{
+    DWORD v;
+    memcpy(&v, p, 4);
+    return v;
+}
 
 // main
 bool DebugMonitorPresent();        // 0x218D0 (main.cpp)

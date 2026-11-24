@@ -43,8 +43,6 @@ static BYTE g_FlashImage[0x100000];      // 0x47D260 the file, repeated to the c
 int g_FlashArgc;                         // 0x47C310
 char *g_FlashArgv[0x100];                // 0x57DCB0
 
-static void ResetScreenSaver() { g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000; }
-
 // 0x1EF60: split the line in place into g_FlashArgv, like CEvoxDash::Tokenize (0x199E0) but
 // into globals of its own (also used by the action scripts)
 bool FlashTokenize(char *line)
@@ -347,7 +345,7 @@ void CEvoxDash::DrawMessage()
     m_font.DrawText(F32(0x43160000), F32(0x43B90000), (DWORD)a << 24 | 0xFFFFFF, g_FlashLine2, 0);
     m_font.End();
 
-    if (m_state != 23)
+    if (m_state != STATE_MESSAGE)
         return;
     switch (m_flashStep) {
     case 0:
@@ -384,8 +382,8 @@ void CEvoxDash::DrawMessage()
     if (g_FlashBusy)
         return;
     if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_BACK) || m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_B] ||
-        m_key == 8 || m_keyboard == 0x27) {
+        m_key == 8 || m_remoteButton == 0x27) {
         ResetScreenSaver();
-        m_state = 24;
+        m_state = STATE_MESSAGE_OUT;
     }
 }

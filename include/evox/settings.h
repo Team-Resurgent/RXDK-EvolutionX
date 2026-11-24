@@ -36,7 +36,7 @@ struct KeyboardKey {       // 0x1C bytes
 
 struct KeyboardLayout {    // 0x4B0 bytes
     float x, y, w, h;      // +0x00
-    const WCHAR *unk10;    // +0x10
+    const WCHAR *unused10; // +0x10 L"" / NULL, never read
     WCHAR *edit;           // +0x14 text being edited, NULL for Yes / No
     KeyboardKey keys[3][14]; // +0x18
 };

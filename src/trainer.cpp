@@ -8,19 +8,13 @@
 #include "evox/dash.h"
 #include "evox/log.h"
 #include "evox/settings.h"
+#include "evox/system.h"
 #include "evox/trainer.h"
 
 WCHAR g_TrainerTitle[0x100];
 WCHAR g_TrainerLines[0x100][0x100];
 char g_TrainerEnable[0x10];
 char g_TrainerValues[200][0x10];
-
-static DWORD Read32(const BYTE *p)
-{
-    DWORD v;
-    memcpy(&v, p, 4);
-    return v;
-}
 
 // 0x1B130 (action 34): the settings table becomes "Enable" (the trainer), one Yes/No row per
 // option, "Save And Exit", then the information lines as headers

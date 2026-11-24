@@ -252,7 +252,7 @@ void __cdecl main()
         g_ShadeLevel = IniInt("Misc", "ShadeLevel", "90");
         if ((unsigned)g_ShadeLevel > 100)
             g_ShadeLevel = 100;
-        g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000;
+        ResetScreenSaver();
         g_ChameleonLed = IniInt("Misc", "ChameleonLed", "15");
         ChameleonSetLed(g_ChameleonLed != 0);
         g_Ini->Unlock();
@@ -312,12 +312,12 @@ void __cdecl main()
             if (g_HasChameleon)
                 ChameleonSetLed(0);
         }
-        if (dash.m_InstallIgr) {
+        if (dash.m_installIgr) {
             PrepareForExit();
             Log("Main : Done\n\r");
             Log("Main : Check InsIGR\n\r");
             if (g_TsrType) {
-                g_Unknown596500 = g_Unknown591A98;
+                g_LoaderIgr = g_IgrOnLaunch;
                 Log("Main : InsIGR\n\r");
                 g_GameRegion =
                     g_GameRegionOverride ? g_GameRegionOverride : (BYTE)IniInt("Misc", "GameRegion", "0");

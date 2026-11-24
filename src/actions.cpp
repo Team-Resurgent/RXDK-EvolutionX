@@ -22,8 +22,6 @@ char g_ActionFlashFile[0x100];    // 0x47CFE0
 static FILE *g_ActionLog;         // 0x47C208 [Action_NN] LogFile
 static int g_DialogRepeat;        // 0x47BD18 frames until left / right / A count again
 
-static void ResetScreenSaver() { g_ScreenSaverDeadline = GetTickCount() + g_ScreenSaverMinutes * 60000; }
-
 // 0x1CAC0: the dialog for [Action_<g_SelectedItem>]: info (the title), Warning (the lines) and
 // progress (shown while the steps run); "Action Error" if there is no such section
 void CEvoxDash::OpenItem()
@@ -100,12 +98,12 @@ void CEvoxDash::DrawActionBox()
     m_font.DrawText(F32(0x43CC0000), h + F32(0x42820000), (DWORD)a << 24 | 0xFFFFFF, L"No", XBFONT_CENTER_X);
     m_font.End();
 
-    if (m_state != 12)
+    if (m_state != STATE_ACTION)
         return;
     if ((m_DefaultGamepad.wButtons & XINPUT_GAMEPAD_BACK) || m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_B] ||
-        m_key == 8 || m_keyboard == 0x27) {
+        m_key == 8 || m_remoteButton == 0x27) {
         ResetScreenSaver();
-        m_state = 13;
+        m_state = STATE_ACTION_OUT;
     }
     if (g_DialogRepeat) {
         g_DialogRepeat--;
@@ -123,7 +121,7 @@ void CEvoxDash::DrawActionBox()
     }
     if (m_DefaultGamepad.bPressedAnalogButtons[XINPUT_GAMEPAD_A] || m_key == 0x0D) {
         ResetScreenSaver();
-        m_state = m_actionYes ? 15 : 13;
+        m_state = m_actionYes ? STATE_PROGRESS_IN : STATE_ACTION_OUT;
     }
 }
 
