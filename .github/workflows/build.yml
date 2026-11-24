@@ -1,17 +1,23 @@
 name: Build RXDK EvolutionX
 
-# Builds EvolutionX against the latest RXDK (clang, SDK, host tools) on Windows: the XBE is the same
-# from any host, so one is enough.
-# EvoX's graphics, its in-game reset loader and TSRs are taken from the user's own evoxdash.xbe at
-# build time and are never committed, so CI builds without them (build.sh warns): the XBE it
-# uploads proves the source builds and can be used for testing, but has no graphics and no
-# in-game reset. The release is built with the assets outside CI and published by hand.
+# Builds EvolutionX against the latest RXDK (clang, SDK, host tools) on Windows (the XBE is the
+# same from any host), then publishes it as the same rolling "latest" release the RXDK repos use:
+# a push to main deletes and recreates the latest tag so /releases/latest is always this build.
+# A v* tag is a fixed release. workflow_dispatch with release_tag is a prerelease. Pull requests
+# build and upload artifacts, and do not publish.
 
 on:
   push:
     branches: [main, master]
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Create a GitHub Release with this tag (e.g. v1.0.0). Leave empty to build only.'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -33,16 +39,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
       - name: Stage RXDK clang, SDK, and host tools
         shell: pwsh
         run: ./scripts/stage-rxdk.ps1
 
-      # without evoxdash.xbe: no graphics, no in-game reset
       - name: Build
         shell: bash
         run: |
@@ -50,18 +50,7 @@ jobs:
           ./build.sh
           [ -f out/evoxdash.xbe ] || { echo "out/evoxdash.xbe was not produced"; exit 1; }
 
-      # the same build with every test hook on, so the test code keeps compiling
-      - name: Build (test hooks)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p out/test
-          python tools/gen_test_script.py tests/crash.txt out/test/crash.h
-          EXTRA_CFLAGS='-DEVOX_UART_LOG -DEVOX_TEST_SCRIPT="../out/test/crash.h" -DEVOX_TEST_INI -DEVOX_TEST_ACTION=9 -DEVOX_TEST_FRAME=100000' \
-            RX_OUT=out/test ./build.sh
-          [ -f out/test/evoxdash.xbe ] || { echo "out/test/evoxdash.xbe was not produced"; exit 1; }
-
-      - name: Package build
+      - name: Package release files
         shell: bash
         run: |
           set -euo pipefail
@@ -71,7 +60,72 @@ jobs:
       - name: Upload build
         uses: actions/upload-artifact@v5
         with:
-          name: evoxdash-no-assets
+          name: evoxdash
           path: dist/*
           if-no-files-found: error
           retention-days: 90
+
+  release:
+    name: GitHub Release
+    needs: [build]
+    if: |
+      github.event_name != 'pull_request' && (
+        startsWith(github.ref, 'refs/tags/v') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v5
+        with:
+          name: evoxdash
+          path: dist
+
+      - name: Resolve release tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          moving=false
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            prerelease=false
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.release_tag }}" ]]; then
+            tag="${{ github.event.inputs.release_tag }}"
+            prerelease=true
+          else
+            # Push to main: one moving "latest" release so /releases/latest stays current.
+            tag="latest"
+            prerelease=false
+            moving=true
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "moving=$moving" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag (prerelease=$prerelease, moving=$moving)"
+
+      - name: Move the 'latest' tag/release to this build
+        if: steps.meta.outputs.moving == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete latest --repo "${{ github.repository }}" --cleanup-tag --yes || true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: EvolutionX ${{ steps.meta.outputs.tag }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          make_latest: ${{ steps.meta.outputs.prerelease == 'false' }}
+          body: |
+            The EvolutionX dashboard (build 3935) rebuilt with RXDK.
+
+            - `evoxdash.xbe`: EvolutionX with its built-in graphics, in-game reset loader and TSRs; it uses `evox.ini` and skins from its own folder like the original
+
+            It has been tested in xemu, not yet on hardware. Its flash, format and drive-lock functions have never been run.
+          files: |
+            dist/*

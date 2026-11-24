@@ -218,10 +218,6 @@ void InitHardDisk()
         if (both)
             XSetFileCacheSize(0x400000);
     });
-#ifdef EVOX_TEST_SCRIPT
-    Log("test: E: fatx %d link %08x, C: fatx %d link %08x\n", PartitionIsFatx(0x55F400), g_LinkStatusE,
-        PartitionIsFatx(0x465400), g_LinkStatusC);
-#endif
     g_Ini->Unlock();
 
     // catch (...) 0x23AD0: release the lock (likewise)
@@ -251,13 +247,6 @@ void InitHardDisk()
         }
         ComputeHddPassword();
     });
-#ifdef EVOX_TEST_SCRIPT
-    Log("test: identify %d model \"%.40s\" security \"%ls\" smart %d", g_DriveIdentified, g_DriveIdentify + 0x36,
-        g_InfoSecurity, g_SmartOn);
-    for (int i = 0; i < 0x14; i++)
-        Log(i ? "%02x" : " password %02x", g_HddPassword[i]);
-    Log("\n");
-#endif
     g_Ini->Unlock();
 }
 

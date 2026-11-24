@@ -116,9 +116,6 @@ public:
     void OpenItem();                                  // 0x1CAC0 actions 200..299 (src/actions.cpp)
     void DrawActionBox();                             // 0x187B0 (m_drawAction) its dialog
     void DrawMessage();                               // 0x18E30 (m_drawMessage) the "Flash BIOS" box (src/flash.cpp)
-#ifdef EVOX_TEST_SCRIPT
-    void RunTestScript();                             // test builds: src/testscript.cpp
-#endif
 
     D3DPRESENT_PARAMETERS m_d3dpp;   // +0x004
     IDirect3D8 *m_pD3D;              // +0x048

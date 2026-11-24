@@ -137,9 +137,6 @@ bool CIniFile::SaveAs(const char *path)
     if (!m_writable)
         return false;
     FILE *f = fopen(path, "wt");
-#ifdef EVOX_TEST_SCRIPT
-    Log("test: SaveAs %s -> %p\n", path, f);
-#endif
     if (!f)
         return false;
     for (m_section = m_first; m_section; m_section = m_section->next) {

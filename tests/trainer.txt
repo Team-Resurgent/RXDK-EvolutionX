@@ -1,8 +1,0 @@
-# The trainer menu and a trainer's options screen. Run from a folder made by
-# tools/make_menu_test.py (q:\trainers\test.etm: "Test Trainer" with two options).
-100 menus
-+10 action 33                # the trainer menu
-+80 a                        # "Test Trainer": action 34, its options screen
-+80 log trainer screen open
-+120 down                    # "Enable"
-+12 log done

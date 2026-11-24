@@ -3,3 +3,5 @@
 *.xbe binary
 *.exe binary
 *.xpr binary
+*.bin binary
+*.png binary

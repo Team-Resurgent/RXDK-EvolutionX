@@ -1,5 +1,5 @@
-// EvoX's built-in graphics and in-game reset code, linked from the user's own evoxdash.xbe at
-// build time (tools/extract_assets.py, build.sh). Each size is 0 when the XBE was built without it.
+// EvoX's built-in graphics and in-game reset code, cut unchanged from the original (assets/,
+// linked by assets/assets.S).
 #pragma once
 #include <xtl.h>
 

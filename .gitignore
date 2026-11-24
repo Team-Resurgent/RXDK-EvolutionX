@@ -1,6 +1,6 @@
 # build output
 out/
-# the original binary and everything derived from it (not redistributed)
+# the original binary and work derived from it
 evoxdash.xbe
 work/
 rea/

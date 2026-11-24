@@ -75,9 +75,6 @@ static DWORD WINAPI BackupThread(LPVOID)
     BYTE key[0x20] = {};
     XcHMAC(XboxHDKey, 0x10, (PUCHAR)HalDiskModelNumber.Buffer, HalDiskModelNumber.Length,
            (PUCHAR)HalDiskSerialNumber.Buffer, HalDiskSerialNumber.Length, key);
-#ifdef EVOX_TEST_SCRIPT
-    Log("test: model %u, serial %u bytes\n", HalDiskModelNumber.Length, HalDiskSerialNumber.Length);
-#endif
     sprintf(path, "%s:\\backup\\hddkey.bin", drive);
     if (FILE *f = fopen(path, "wb")) {
         fwrite(key, 1, 0x20, f);

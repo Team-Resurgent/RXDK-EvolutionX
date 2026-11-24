@@ -95,9 +95,5 @@ void IgrFinish()
     if (g_LaunchMountsD != 1) // items with flag 0x100: "device\dir\name.xbe" instead of "device\dir;name.xbe"
         if (char *p = strrchr(LaunchDataPage->Header.szLaunchPath, ';'))
             *p = '\\';
-#ifdef EVOX_TEST_ACTION
-    Log("test: launch '%s' type %08x title %08x\n", LaunchDataPage->Header.szLaunchPath,
-        LaunchDataPage->Header.dwLaunchDataType, LaunchDataPage->Header.dwTitleId);
-#endif
     HalReturnToFirmware(HalQuickRebootRoutine);
 }

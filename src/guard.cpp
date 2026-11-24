@@ -43,16 +43,9 @@ static void SetExceptionList(void *p) { __asm__ volatile("movl %0, %%fs:0" : : "
 // this one, as the original's catch did, and resume at the guard
 extern "C" int __cdecl CrashGuardHandler(EXCEPTION_RECORD *record, void *frame, void *, void *)
 {
-#ifdef EVOX_TEST_SCRIPT
-    Log("guard: %08lx at %p flags %lx frame %p\n", record->ExceptionCode, record->ExceptionAddress,
-        record->ExceptionFlags, frame);
-#endif
     if (record->ExceptionFlags & UNWINDING)
         return 1; // ExceptionContinueSearch
     UnwindTo(frame, record);
-#ifdef EVOX_TEST_SCRIPT
-    Log("guard: unwound\n");
-#endif
     longjmp(((CrashGuardFrame *)frame)->resume, 1);
 }
 

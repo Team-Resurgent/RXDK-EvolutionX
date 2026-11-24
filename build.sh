@@ -2,11 +2,10 @@
 # The build: EvolutionX from this project's sources on the RXDK SDK.
 #   compile:  clang with the SDK's own flags (Rxdk.Cli compile-args), C and C++
 #   link:     Rxdk.Cli link-exe (XAPI start-up -> main)
-#   assets:   EvoX's built-in graphics, extracted from the user's own evoxdash.xbe (3935) by
-#             tools/extract_assets.py and linked in; without it the XBE builds with none
+#   assets:   EvoX's built-in graphics and in-game reset code from the original (assets/), linked
+#             in unchanged by assets/assets.S
 #   XBE:      imagebld, with the original's title id, certificate fields and init flags
-# usage: ./build.sh   (RXDK: RXDK root; RX_OUT: output dir, default out; EXTRA_CFLAGS: extra flags;
-#                     EVOX_XBE: the original XBE, default evoxdash.xbe; PYTHON: the Python 3 to use)
+# usage: ./build.sh   (RXDK: RXDK root; RX_OUT: output dir, default out; EXTRA_CFLAGS: extra flags)
 # Runs on Windows (Git Bash / MSYS2), Linux and macOS, with RXDK where RXDK itself puts it.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -29,9 +28,6 @@ for t in "$CL" "$CLI" "$IMAGEBLD"; do
     [ -x "$t" ] || { echo "missing $t (RXDK root: $RXDK; set RXDK)"; exit 1; }
 done
 
-# (on Windows python3 may be the Microsoft Store stub, so try python first there)
-if [ $os = windows ]; then PY=${PYTHON:-$(command -v python || command -v python3)}; else PY=${PYTHON:-$(command -v python3 || command -v python)}; fi
-
 OUT=${RX_OUT:-out}
 mkdir -p "$OUT/obj"
 # no stale outputs: a failed step must not leave the previous build looking current
@@ -44,17 +40,8 @@ while IFS= read -r f; do CFLAGS_CXX+=("$f"); done < <("$CLI" compile-args --lang
 # (the SDK headers trip -Wpragma-pack; sparse tables use C99 array designators on purpose)
 OURS="${EXTRA_CFLAGS:-} -O2 -Wall -Wno-pragma-pack -Wno-c99-designator -Iinclude"
 
-# EvoX's built-in graphics from the original XBE (never committed)
-EVOX_XBE=${EVOX_XBE:-evoxdash.xbe}
-if [ -f "$EVOX_XBE" ]; then
-    "$PY" tools/extract_assets.py "$EVOX_XBE" "$OUT/assets"
-else
-    echo "warning: $EVOX_XBE not found: building without EvoX's graphics (set EVOX_XBE)"
-    "$PY" tools/extract_assets.py --none "$OUT/assets"
-fi
-
 OBJS=("$OUT/obj/assets.o")
-"$CL" -target i686-pc-windows-gnu -c "$OUT/assets/assets.S" -o "$OUT/obj/assets.o"
+"$CL" -target i686-pc-windows-gnu -c assets/assets.S -o "$OUT/obj/assets.o"
 while IFS= read -r src; do
     obj="$OUT/obj/${src%.*}.o"
     mkdir -p "$(dirname "$obj")"

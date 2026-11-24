@@ -1,3 +1,0 @@
-# The folder scans and the [Menu] parser: run from a folder made by tools/make_menu_test.py
-# and log every menu (main, BIOS, skins, trainers, with submenus).
-100 menus

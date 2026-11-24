@@ -102,13 +102,8 @@ void __cdecl main()
     }
 
     g_Ini = new CIniFile;
-#ifdef EVOX_TEST_INI // test builds: a writable e:\evox.ini in place of q:\evox.ini
-    const char *iniPath = "e:\\evox.ini";
-    if (false) {
-#else
     const char *iniPath = "q:\\evox.ini";
     if (_stricmp(g_DashRoot, "\\Device\\CdRom0") == 0) {
-#endif
         g_Ini->m_writable = false;
         g_RunningFromCd = true;
     }

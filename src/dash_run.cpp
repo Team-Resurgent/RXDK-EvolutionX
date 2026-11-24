@@ -123,12 +123,6 @@ void CEvoxDash::Run()
 
     for (;;) {
         m_frame++;
-#ifdef EVOX_TEST_ACTION // test hook: run one action at a given frame (EVOX_TEST_FRAME)
-        if (m_frame == EVOX_TEST_FRAME) {
-            Log("test: action %d at frame %d\n", EVOX_TEST_ACTION, EVOX_TEST_FRAME);
-            m_action = EVOX_TEST_ACTION;
-        }
-#endif
         m_remoteButton = PollRemote();
         XBInput_GetInput(m_Gamepad);
         MergeGamepads(m_Gamepad, m_DefaultGamepad);
@@ -139,9 +133,6 @@ void CEvoxDash::Run()
             m_key = 0;
             m_keyAscii = 0;
         }
-#ifdef EVOX_TEST_SCRIPT
-        RunTestScript();
-#endif
 
         // timing
         QueryPerformanceCounter(&qwTime);
