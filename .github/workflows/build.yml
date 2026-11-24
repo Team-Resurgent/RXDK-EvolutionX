@@ -4,7 +4,7 @@ name: Build RXDK EvolutionX
 # from any host, so one is enough.
 # EvoX's graphics, its in-game reset loader and TSRs are taken from the user's own evoxdash.xbe at
 # build time and are never committed, so CI builds without them (build.sh warns): the XBE it
-# uploads proves the source builds and can be used for testing, but have no graphics and no
+# uploads proves the source builds and can be used for testing, but has no graphics and no
 # in-game reset. For that reason no release is published; build it yourself with your
 # evoxdash.xbe in the project root.
 
