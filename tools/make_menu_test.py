@@ -12,6 +12,7 @@ MENU = r'''[Menu]
 # a comment
 Section "Root"
 {
+	Item "Copy Test",@200
 	Item "Settings",ID_Settings
 	Item "Reboot",@5
 	Item "Bravo by Item","q:\games\b\default.xbe"
@@ -34,6 +35,14 @@ Section "Root"
 	; another comment
 	Item "Last item",@10
 }
+
+[Action_00]
+info = "Copy Test"
+Warning = "Copies q:\evox.ini to e:\evoxtest.ini"
+Warning = "(a test action: nothing else)"
+progress = "Copying..."
+LogFile = "e:\action00.log"
+copy "\evox.ini" "e:\evoxtest.ini"
 '''
 
 SKIN = '''SkinName "Blue Skin","Blue"

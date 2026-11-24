@@ -23,14 +23,16 @@ and the per-frame tasks: the live information for the skin variables and the set
 (clock text, free space, network, BIOS and kernel versions, temperatures, Chameleon), the DVD tray
 and disc check, memory units and the SNTP clock, Backup, the in-game reset install (its loader and
 TSRs are taken from `evoxdash.xbe` like the graphics), and the three network servers: FTP (port
-21), Telnet (23) and the RDTOOLS debug server (731, xbdm-style). In xemu the start screen
-(background, logo, selection bar and main menu) matches the original's pixel for pixel outside the
-turning logo, with the built-in menu and with a `[Menu]`, and every skin variable reads the same
-as in the original (`tools/make_info_test.py` makes a skin that shows them all). What is called
-but not rebuilt yet (the other screens) is in `include/evox/pending.h` and the stub classes in
-`include/evox/dash.h`: stubs in `src/pending.cpp` log `pending: <name> (<original address>)` and
-return a neutral result. Source comments give each function's address in the original, so it can
-be checked against the disassembly.
+21), Telnet (23) and the RDTOOLS debug server (731, xbdm-style), the trainer screens and Evox.etf,
+the scripted actions (`[Action_NN]`: the "Continue ?" dialog and its steps), the "Flash BIOS" box
+and the flash writer, and the DVD remote and USB keyboard. In xemu the start screen (background,
+logo, selection bar and main menu) matches the original's pixel for pixel outside the turning
+logo, with the built-in menu and with a `[Menu]`, and every skin variable reads the same as in the
+original (`tools/make_info_test.py` makes a skin that shows them all). What is called but not
+rebuilt yet (the drive identify, ATA and SMART code) is in `include/evox/pending.h` and the stub
+classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log `pending: <name> (<original
+address>)` and return a neutral result. Source comments give each function's address in the
+original, so it can be checked against the disassembly.
 
 The rebuild links RXDK's D3D8, D3DX8, XGraphics, XNet, XAPI and C runtime in place of the XDK ones
 that the original carried. The output XBE is not packed.
@@ -106,6 +108,11 @@ python tools/make_menu_test.py work/menutest/orig evoxdash.xbe out/evoxdash.xbe
 `tests/backup_igr.txt` runs Backup and installs the in-game reset (without the reboot), logging
 the files' hashes; `tools/check_backup_igr.py` compares them with xemu's flash, EEPROM and HDD
 images and with its own decoding of the TSR.
+
+`tests/trainer.txt` opens a trainer's options screen, and `tests/actions.txt` runs a scripted
+action (a copy, with its log), both from the folder `tools/make_menu_test.py` makes. Never put
+configsector, format, flashbios or hddlock* steps in a test action, and never script the Flash
+BIOS box.
 
 `tools/gen_test_script.py` lists the script commands. `EVOX_TEST_INI` loads and saves
 `e:\evox.ini` in place of `q:\evox.ini`, so run it on a throwaway HDD (xemu's `-snapshot`). The
