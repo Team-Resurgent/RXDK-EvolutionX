@@ -1,0 +1,84 @@
+name: Build RXDK EvolutionX
+
+# Builds EvolutionX against the latest RXDK (clang, SDK, host tools) on Windows, Linux and macOS.
+# EvoX's graphics, its in-game reset loader and TSRs are taken from the user's own evoxdash.xbe at
+# build time and are never committed, so CI builds without them (build.sh warns): the XBEs it
+# uploads prove the source builds and can be used for testing, but have no graphics and no
+# in-game reset. For that reason no release is published; build it yourself with your
+# evoxdash.xbe in the project root.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: Windows, os: windows-latest}
+          - {name: Linux, os: ubuntu-latest}
+          - {name: macOS, os: macos-latest}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Stage RXDK clang, SDK, and host tools
+        shell: pwsh
+        run: ./scripts/stage-rxdk.ps1
+
+      # without evoxdash.xbe: no graphics, no in-game reset
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./build.sh
+          [ -f out/evoxdash.xbe ] || { echo "out/evoxdash.xbe was not produced"; exit 1; }
+
+      # the same build with every test hook on, so the test code keeps compiling
+      - name: Build (test hooks)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/test
+          python tools/gen_test_script.py tests/crash.txt out/test/crash.h
+          EXTRA_CFLAGS='-DEVOX_UART_LOG -DEVOX_TEST_SCRIPT="../out/test/crash.h" -DEVOX_TEST_INI -DEVOX_TEST_ACTION=9 -DEVOX_TEST_FRAME=100000' \
+            RX_OUT=out/test ./build.sh
+          [ -f out/test/evoxdash.xbe ] || { echo "out/test/evoxdash.xbe was not produced"; exit 1; }
+
+      - name: Package build
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp out/evoxdash.xbe dist/
+
+      - name: Upload build
+        uses: actions/upload-artifact@v5
+        with:
+          name: evoxdash-no-assets-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 90
