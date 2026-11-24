@@ -13,6 +13,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Team-Resurgent/RXDK-EvolutionX/releases/latest"><img src="https://img.shields.io/badge/download-latest-brightgreen.svg?style=for-the-badge&logo=github" alt="Download"></a>
+</p>
+
+<p align="center">
   <img src="docs/images/start-screen.png" width="640" alt="The rebuilt EvolutionX's start screen in xemu: the built-in skin with the turning logo and the main menu">
 </p>
 
@@ -28,7 +32,8 @@ carried. EvoX's own code is all rebuilt.
 EvoX carries its built-in graphics (two XPR texture packs and the XBG logo mesh), its in-game
 reset loader and TSRs inside its XBE. Those are not part of this repository: the build takes them
 from your own `evoxdash.xbe` and links them in unchanged (see [Build](#build)). Nothing else of the
-original is linked in.
+original is linked in. The [release](https://github.com/Team-Resurgent/RXDK-EvolutionX/releases/latest)
+is built with them.
 
 In xemu the start screen matches the original's pixel for pixel outside the turning logo, every
 skin variable reads the same, and the FTP, Telnet and debug servers give the same transcripts.
@@ -81,7 +86,8 @@ is committed. `EVOX_XBE=<path>` points at the original elsewhere. Without it the
 with a warning, but has no graphics and no in-game reset.
 
 Every push to `main` builds on GitHub Actions (Windows), without the assets, and uploads that XBE
-as a build artifact; no release is published, since it would have no graphics.
+as a build artifact, as a check that the source builds. The release is built with the assets
+outside CI and published by hand.
 `RX_OUT=<dir>` builds somewhere else; `EXTRA_CFLAGS` adds defines, e.g.
 `EXTRA_CFLAGS=-DEVOX_UART_LOG ./build.sh`; `PYTHON` picks the Python 3.
 
