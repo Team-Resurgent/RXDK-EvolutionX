@@ -63,12 +63,37 @@ write(os.path.join(out, 'bios', 'zulu.bin'), bytes(16))
 write(os.path.join(out, 'bios', 'alpha.bin'), bytes(16))
 write(os.path.join(out, 'skin', 'Blue', 'skin.ini'), SKIN.replace('\n', '\r\n'))
 write(os.path.join(out, 'skin', 'NoName', 'skin.ini'), 'Nothing here\r\n')
-# a trainer: the dword at +0x0E is the offset of the dword holding the name's offset
-etm = bytearray(0x40)
-struct.pack_into('<I', etm, 0x0E, 0x20)
-struct.pack_into('<I', etm, 0x20, 0x30)
-etm[0x30:0x3D] = b'Test Trainer\0'
-write(os.path.join(out, 'trainers', 'test.etm'), bytes(etm))
+
+
+def make_etm(name, lines, options, title_ids, enabled=0):
+    # the .etm layout EvoX reads (include/evox/trainer.h): size +0, option bytes offset +0x0A,
+    # string table offset +0x0E, title id list offset +0x12, enabled +0x22
+    strings = [name.encode() + b'\0', b''.join(l.encode() + b'\0' for l in lines) + b'\0']
+    strings += [o.encode() + b'\0' for o in options]
+    data = bytearray(0x40)
+    table_at = len(data)
+    data += bytes(4 * (len(strings) + 1))
+    offsets = []
+    for s in strings:
+        offsets.append(len(data))
+        data += s
+    for i, o in enumerate(offsets):
+        struct.pack_into('<I', data, table_at + 4 * i, o)
+    options_at = len(data)
+    data += bytes(len(options))
+    ids_at = len(data)
+    data += b''.join(struct.pack('<I', t) for t in title_ids) + bytes(4)
+    struct.pack_into('<I', data, 0x0A, options_at)
+    struct.pack_into('<I', data, 0x0E, table_at)
+    struct.pack_into('<I', data, 0x12, ids_at)
+    data[0x22] = enabled
+    struct.pack_into('<I', data, 0, len(data))
+    return bytes(data)
+
+
+write(os.path.join(out, 'trainers', 'test.etm'),
+      make_etm('Test Trainer', ['Trainer for the test game', 'Made by make_menu_test.py'],
+               ['Infinite Lives', 'Max Ammo'], [0x4D530004]))
 xbe_with_title(game, os.path.join(out, 'games', 'a', 'default.xbe'), 'Alpha Game')
 xbe_with_title(game, os.path.join(out, 'games', 'b', 'default.xbe'), 'Bravo Game')
 xbe_with_title(game, os.path.join(out, 'games', 'delta', 'default.xbe'), '')
