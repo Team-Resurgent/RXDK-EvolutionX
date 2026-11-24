@@ -9,6 +9,7 @@
 #include "evox/globals.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
+#include "evox/devices.h"
 #include "evox/info.h"
 #include "evox/pending.h"
 
@@ -113,7 +114,7 @@ HRESULT CEvoxDash::Create()
     }
 
     // EvoX's own initialisation
-    if (InitDevices23D70() < 0 || InitDevices23F70() < 0)
+    if (OpenRemotes() < 0 || OpenKeyboards() < 0)
         return E_FAIL;
     if (m_font.Create(m_pd3dDevice, 0) < 0)
         return 1;

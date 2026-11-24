@@ -13,6 +13,7 @@
 #include <string.h>
 #include <wchar.h>
 #include "evox/dash.h"
+#include "evox/devices.h"
 #include "evox/globals.h"
 #include "evox/log.h"
 #include "evox/pending.h"
@@ -126,10 +127,10 @@ void CEvoxDash::Run()
             m_action = EVOX_TEST_ACTION;
         }
 #endif
-        m_keyboard = KeyboardPoll();
+        m_keyboard = PollRemote();
         XBInput_GetInput(m_Gamepad);
         MergeGamepads(m_Gamepad, m_DefaultGamepad);
-        if ((m_keystroke = KeyboardGetKeystroke())) {
+        if ((m_keystroke = (const BYTE *)GetKeystroke())) {
             m_key = m_keystroke[0];
             m_keyFlags = m_keystroke[1];
         } else {
@@ -322,7 +323,7 @@ void CEvoxDash::Run()
             m_EA8 = 0;
             m_EAC = 0;
             m_1911 = false;
-            OpenFileView(m_menu->GetItem(m_menu->selected)->path);
+            OpenTrainerOptions((TrainerFile *)m_menu->GetItem(m_menu->selected)->path);
             goto action_done;
         case 100:
             m_state = 8;

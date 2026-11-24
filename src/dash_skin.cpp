@@ -81,7 +81,8 @@ void CEvoxDash::LoadBackground()
     FullScreenQuad((SkinVertex *)D3DVertexBuffer_Lock2((D3DVertexBuffer *)m_bgVB, 0), u, v);
 }
 
-// 0x17910: [skin] Launch, the picture faded in when leaving; else the built-in one (resource 1)
+// 0x17910 (0x17B40 is part of it, split off by Ghidra): [skin] Launch, the picture faded in when
+// leaving; else the built-in one (resource 1)
 void CEvoxDash::LoadLaunchPicture()
 {
     m_fadeTexture = nullptr;

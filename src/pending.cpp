@@ -25,15 +25,8 @@ void SmartEnabled237C0() { PENDING("SmartEnabled237C0", 0x237C0); }
 void Func235F0() { PENDING("Func235F0", 0x235F0); }
 
 // the dashboard
-HRESULT InitDevices23D70() { PENDING("InitDevices23D70", 0x23D70); return S_OK; }
-HRESULT InitDevices23F70() { PENDING("InitDevices23F70", 0x23F70); return S_OK; }
-int KeyboardPoll() { PENDING_ONCE("KeyboardPoll", 0x23E10); return 0; }
-const BYTE *KeyboardGetKeystroke() { PENDING_ONCE("KeyboardGetKeystroke", 0x24030); return nullptr; }
 void Func20F20() { PENDING("Func20F20", 0x20F20); }
 
-void CEvoxDash::SaveTrainerOptions() { PENDING("CEvoxDash::SaveTrainerOptions", 0x1B380); }
-void CEvoxDash::SaveTrainerFile() { PENDING("CEvoxDash::SaveTrainerFile", 0x195E0); }
-void CEvoxDash::OpenFileView(const char *) { PENDING("CEvoxDash::OpenFileView", 0x1B130); }
 void CEvoxDash::OpenItem() { PENDING("CEvoxDash::OpenItem", 0x1CAC0); }
 void CEvoxDash::DrawPass187B0() { PENDING_ONCE("CEvoxDash::DrawPass187B0", 0x187B0); }
 void CEvoxDash::DrawMessage() { PENDING_ONCE("CEvoxDash::DrawMessage", 0x18E30); }

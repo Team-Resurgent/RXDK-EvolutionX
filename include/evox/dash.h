@@ -50,6 +50,10 @@ public:
     void SaveSettings();                              // 0x1B440 "Save And Exit"
     void DrawSettings();                              // 0x1B820 (m_drawSettings)
     void KeyboardInput();                             // (part of DrawSettings)
+    // trainers (src/trainer.cpp)
+    void OpenTrainerOptions(struct TrainerFile *trainer); // 0x1B130 action 34
+    void SaveTrainerOptions();                        // 0x1B380 "Save And Exit" there
+    void SaveTrainerFile();                           // 0x195E0 E:\TDATA\EVOX\Evox.etf
     // the menus from folders and [Menu] (src/dash_menus.cpp)
     void ScanBios(const char *dir);                   // 0x19480 the BIOS menu
     void ScanSkins(const char *dir);                  // 0x1D440 the skin menu
@@ -65,9 +69,6 @@ public:
 #endif
 
     // not rebuilt yet (src/pending.cpp)
-    void SaveTrainerOptions();                        // 0x1B380 the trainer options screen
-    void SaveTrainerFile();                           // 0x195E0 E:\TDATA\EVOX\Evox.etf
-    void OpenFileView(const char *path);              // 0x1B130 action 34
     void OpenItem();                                  // 0x1CAC0 actions 200..299
     void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
     void DrawMessage();                               // 0x18E30 (m_drawMessage)
@@ -161,9 +162,9 @@ public:
     int m_trainerOptions;            // +0x191C
     const BYTE *m_keystroke;         // +0x1920 last keyboard keystroke, or NULL
     BYTE m_key;                      // +0x1924 its virtual key (8 backspace, 0x2A print screen)
-    BYTE m_keyFlags;                 // +0x1925
+    BYTE m_keyFlags;                 // +0x1925 its ASCII character (XINPUT_DEBUG_KEYSTROKE.Ascii)
     BYTE pad1926[2];
-    int m_keyboard;                  // +0x1928
+    int m_keyboard;                  // +0x1928 the DVD remote's button this frame (PollRemote)
     int m_192C;
     DWORD m_ledFlags;                // +0x1930 Chameleon LED commands
     int *m_gameRegionChoice;         // +0x1934 the Game Region row's choice (OpenSettings)
