@@ -60,6 +60,9 @@ public:
     void AutoAddItem(CMenu *menu, char *dir, int depth); // 0x191B0 the games in a folder
     const WCHAR *GetXbeTitle(const char *path);       // 0x18DC0
     void DrawBackupBox();                             // 0x18D10 (m_drawE98) src/backup.cpp
+    void OpenItem();                                  // 0x1CAC0 actions 200..299 (src/actions.cpp)
+    void DrawActionBox();                             // 0x187B0 (m_drawAction) its dialog
+    void DrawMessage();                               // 0x18E30 (m_drawMessage) the "Flash BIOS" box (src/flash.cpp)
 #ifdef EVOX_TEST_SCRIPT
     void RunTestScript();                             // test builds: src/testscript.cpp
 #endif
@@ -68,9 +71,6 @@ public:
     void SaveTrainerOptions();                        // 0x1B380 the trainer options screen
     void SaveTrainerFile();                           // 0x195E0 E:\TDATA\EVOX\Evox.etf
     void OpenFileView(const char *path);              // 0x1B130 action 34
-    void OpenItem();                                  // 0x1CAC0 actions 200..299
-    void DrawPass187B0();                             // 0x187B0 (m_drawE8D)
-    void DrawMessage();                               // 0x18E30 (m_drawMessage)
 
     D3DPRESENT_PARAMETERS m_d3dpp;   // +0x004
     IDirect3D8 *m_pD3D;              // +0x048
@@ -111,11 +111,14 @@ public:
     BYTE pad27D[3];
     int m_action;                    // +0x280 command for the next frame (see Run)
     int m_state;                     // +0x284 fade / screen state (see Run)
-    BYTE unk288[0xE8C - 0x288];
-    bool m_E8C;
-    bool m_drawE8D;                  // +0xE8D
+    WCHAR m_actionTitle[0x100];      // +0x288 the action dialog: [Action_NN] info
+    WCHAR m_actionText[0x400];       // +0x488 its Warning lines
+    WCHAR m_actionProgress[0x100];   // +0xC88 progress, shown while the steps run
+    int m_actionLines;               // +0xE88 Warning lines (the dialog's height)
+    bool m_actionYes;                // +0xE8C Yes is selected
+    bool m_drawAction;               // +0xE8D
     BYTE padE8E[2];
-    int m_E90, m_E94;                // +0xE90 fade levels, 0..255
+    int m_actionFade, m_progressFade; // +0xE90 the dialog's and the progress box's fade, 0..255
     bool m_drawE98;                  // +0xE98
     BYTE padE99[3];
     int m_E9C;
@@ -130,9 +133,10 @@ public:
     CMenu *m_nextMenu;               // +0xFC0
     bool m_drawMessage;              // +0xFC4
     BYTE padFC5[3];
-    int m_FC8, m_FCC;
-    char m_message[0x100];           // +0xFD0
-    bool m_10D0;
+    int m_messageFade;               // +0xFC8 the "Flash BIOS" box's fade, 0..255
+    int m_flashStep;                 // +0xFCC see DrawMessage
+    char m_message[0x100];           // +0xFD0 the BIOS file to flash
+    bool m_flashNow;                 // +0x10D0 flash without asking for Y (FTP FLASHBIOS, flashbios steps)
     BYTE pad10D1[3];
     int m_10D4;
     BYTE unk10D8[4];

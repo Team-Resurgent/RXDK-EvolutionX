@@ -43,5 +43,4 @@ HRESULT InitDevices23D70();               // 0x23D70 in Create
 HRESULT InitDevices23F70();               // 0x23F70 in Create
 int KeyboardPoll();                       // 0x23E10 each frame
 const BYTE *KeyboardGetKeystroke();       // 0x24030 each frame: {vkey, flags} or NULL
-void Func20F20();                         // 0x20F20 state 15
 void StartBackup();                       // 0x20460 state 5: the backup thread (backup.cpp)
