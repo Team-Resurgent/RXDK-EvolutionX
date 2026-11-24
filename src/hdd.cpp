@@ -6,7 +6,7 @@
 #include "evox/info.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 // a drive letter and its device
 struct DriveLink {
@@ -28,12 +28,80 @@ NTSTATUS g_LinkStatusC, g_LinkStatusE, g_LinkStatusF, g_LinkStatusG, g_LinkStatu
 bool g_EnableSmart;   // 0x590539 [MISC] EnableSMART
 BYTE g_HddTempId;     // 0x95CD0 [MISC] HDD_Temp_ID: the SMART attribute with the temperature
 bool g_SmartOn;       // 0x58FB00 SMART is enabled on the drive
-BYTE g_SmartData[0x200]; // 0x590548 SMART attributes
+alignas(16) BYTE g_SmartData[0x200]; // 0x590548 SMART attributes
 // 0x590C50. Raw disk reads need an aligned buffer (an odd address fails with
 // STATUS_INVALID_PARAMETER); the original's was aligned by where it happened to land.
 alignas(16) static BYTE g_Sector[0x200];
 BYTE g_HddPassword[0x20];                       // 0x590314
 alignas(16) static BYTE g_IdentifyBuffer[0x200]; // 0x590A48
+BYTE *g_DriveIdentify = g_IdentifyBuffer;        // 0x58FB08 (null in the original until IdentifyDrive)
+bool g_DriveIdentified;                          // 0x590E71 IDENTIFY succeeded (not read anywhere)
+bool g_DriveHasSecurity;                         // 0x590E50 the drive has the security feature set (not read)
+
+// 0x23530: an ATA command through IOCTL_IDE_PASS_THROUGH on the whole disk. The registers are
+// sent and read back in place; the result is whether the disk opened, not the command's status.
+bool AtaCommand(AtaRegisters *r)
+{
+    ANSI_STRING name = {0x1C, 0x1D, (PCHAR) "\\Device\\Harddisk0\\partition0"};
+    OBJECT_ATTRIBUTES oa = {nullptr, &name, OBJ_CASE_INSENSITIVE};
+    IO_STATUS_BLOCK iosb;
+    HANDLE h = INVALID_HANDLE_VALUE;
+    NtOpenFile(&h, GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE, &oa, &iosb, FILE_SHARE_READ | FILE_SHARE_WRITE,
+               FILE_SYNCHRONOUS_IO_ALERT);
+    if (h == INVALID_HANDLE_VALUE)
+        return false;
+    NtDeviceIoControlFile(h, nullptr, nullptr, nullptr, &iosb, 0x4D028, r, sizeof *r, r, sizeof *r);
+    NtClose(h);
+    return true;
+}
+
+// 0x236E0: IDENTIFY DEVICE into g_DriveIdentify, and the settings screen's Security line: "N/A"
+// without the security feature set (word 82 bit 1, word 128 bit 0), else "Lock Enabled" or
+// "Lock Disabled", or "Unlock Error" while the drive is locked (word 128 bit 2)
+void IdentifyDrive()
+{
+    g_DriveIdentify = g_IdentifyBuffer;
+    memset(g_IdentifyBuffer, 0, sizeof g_IdentifyBuffer);
+    AtaRegisters r = {};
+    r.command = 0xEC;
+    r.dataSize = 0x200;
+    r.data = g_IdentifyBuffer;
+    if (!AtaCommand(&r))
+        return;
+    g_DriveIdentified = true;
+    const BYTE *id = g_DriveIdentify;
+    if (!(id[0xA4] & 2) || !(id[0x100] & 1)) {
+        wcscpy(g_InfoSecurity, L"N/A");
+        return;
+    }
+    g_DriveHasSecurity = true;
+    wcscpy(g_InfoSecurity, (id[0x100] & 2) ? L"Lock Enabled" : L"Lock Disabled");
+    if (id[0x100] & 4)
+        wcscpy(g_InfoSecurity, L"Unlock Error");
+}
+
+// 0x237C0: SMART READ DATA into g_SmartData; SMART is taken as off if the disk did not open
+void SmartReadData()
+{
+    memset(g_SmartData, 0, sizeof g_SmartData);
+    AtaRegisters r = {};
+    r.features = 0xD0;
+    r.lbaMid = 0x4F;
+    r.lbaHigh = 0xC2;
+    r.command = 0xB0;
+    r.dataSize = 0x200;
+    r.data = g_SmartData;
+    if (!AtaCommand(&r))
+        g_SmartOn = false;
+}
+
+// 0x235F0: the drive's lock password, HMAC-SHA1(XboxHDKey, model number + serial number)
+void ComputeHddPassword()
+{
+    memset(g_HddPassword, 0, sizeof g_HddPassword);
+    XcHMAC(XboxHDKey, 0x10, (PUCHAR)HalDiskModelNumber.Buffer, HalDiskModelNumber.Length,
+           (PUCHAR)HalDiskSerialNumber.Buffer, HalDiskSerialNumber.Length, g_HddPassword);
+}
 
 // 0x235D0
 bool HddPasswordMissing()
@@ -57,7 +125,7 @@ bool AtaSecurityCommand(BYTE command, WORD control, const BYTE *password)
     memcpy(data + 2, password, 0x20);
     AtaRegisters r = {};
     r.command = command;
-    r.unk07 = 1;
+    r.hostSendsData = 1;
     r.dataSize = 0x200;
     r.data = data;
     return AtaCommand(&r);
@@ -165,17 +233,24 @@ void InitHardDisk()
             r.lbaMid = 0x4F;
             r.lbaHigh = 0xC2;
             r.command = 0xB0;
-            r.unk07 = 1;
+            r.hostSendsData = 1;
             AtaCommand(&r);
             IdentifyDrive();
             id = g_DriveIdentify;
         }
         if (id[0xAA] & 1) {
             g_SmartOn = true;
-            SmartEnabled237C0();
+            SmartReadData();
         }
     }
-    Func235F0();
+    ComputeHddPassword();
+#ifdef EVOX_TEST_SCRIPT
+    Log("test: identify %d model \"%.40s\" security \"%ls\" smart %d", g_DriveIdentified, g_DriveIdentify + 0x36,
+        g_InfoSecurity, g_SmartOn);
+    for (int i = 0; i < 0x14; i++)
+        Log(i ? "%02x" : " password %02x", g_HddPassword[i]);
+    Log("\n");
+#endif
     g_Ini->Unlock();
 }
 

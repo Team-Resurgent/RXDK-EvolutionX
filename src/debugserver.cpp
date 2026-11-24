@@ -18,7 +18,7 @@
 #include "evox/debugserver.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 #pragma clang diagnostic ignored "-Winvalid-offsetof" // (the layout checks below are on purpose)
 static_assert(offsetof(CDebugServer, m_listen) == 0x004, "m_listen");

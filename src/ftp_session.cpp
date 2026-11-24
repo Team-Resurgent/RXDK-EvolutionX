@@ -7,7 +7,7 @@
 #include "evox/ftp.h"
 #include "evox/globals.h"
 #include "evox/inifile.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 extern int g_FtpUsers;       // 0x3D6FD8 (ftp.cpp)
 extern bool g_AutoConvNames; // 0x3D6DD4 (ftp.cpp)

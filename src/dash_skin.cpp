@@ -10,7 +10,7 @@
 #include "evox/globals.h"
 #include "evox/inifile.h"
 #include "evox/info.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 #define F32(bits) __builtin_bit_cast(float, (unsigned)(bits))
 

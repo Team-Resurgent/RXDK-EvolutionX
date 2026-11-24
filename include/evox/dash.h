@@ -14,7 +14,7 @@
 #include "evox/xbmesh.h"
 #include "evox/xbresource.h"
 
-// ---- not rebuilt yet (src/pending.cpp) -----------------------------------------------------
+// ---- the skin's text labels (dash_skin.cpp) ------------------------------------------------
 struct SkinLabel {          // 0x418 bytes, a text label of the skin
     float alpha;            // +0x000 0..1
     float x, y;             // +0x004

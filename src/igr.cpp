@@ -9,7 +9,7 @@
 #include <string.h>
 #include "evox/assets.h"
 #include "evox/globals.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 #define KERNEL_BASE ((BYTE *)0x80010000)
 #define LOADER_ADDRESS ((BYTE *)0x80000010)

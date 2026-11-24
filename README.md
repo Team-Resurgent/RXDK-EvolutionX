@@ -4,14 +4,14 @@ The EvolutionX dashboard (build 3935) rebuilt as source on the open RXDK SDK.
 
 ## Status
 
-Early. EvoX's code is being rebuilt function by function from the original; the XBE keeps the
+EvoX's own code is rebuilt function by function from the original; the XBE keeps the
 original's header and certificate (title id 0x586F7645 "RemoteX", init flags 0xC, 64 KB stack).
 See [docs/layout.md](docs/layout.md) for what is EvoX's own code and what comes from RXDK's
 libraries.
 
-Rebuilt so far: `main` (start-up, Q: mapping, evox.ini settings, MS-dashboard hand-off, network
-config and start-up), the evox.ini reader/writer (`CIniFile`), the debug log, gamepad input, and
-the dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Misc]` settings),
+Rebuilt: `main` (start-up, Q: mapping, evox.ini settings, MS-dashboard hand-off, network config
+and start-up), the evox.ini reader/writer (`CIniFile`), the debug log, gamepad input, and the
+dashboard object's construction, `Create` (Direct3D, gamepads, servers, `[Misc]` settings),
 `Destroy`, `Render` (draw passes, fade of the last title's screen, screenshot, screen saver) and
 `Run` (the frame loop with its action and fade state machines), the sample-framework classes EvoX
 built in (font, XBG mesh, packed resources), the drawing helpers, the skin's text labels and
@@ -25,14 +25,13 @@ and disc check, memory units and the SNTP clock, Backup, the in-game reset insta
 TSRs are taken from `evoxdash.xbe` like the graphics), and the three network servers: FTP (port
 21), Telnet (23) and the RDTOOLS debug server (731, xbdm-style), the trainer screens and Evox.etf,
 the scripted actions (`[Action_NN]`: the "Continue ?" dialog and its steps), the "Flash BIOS" box
-and the flash writer, and the DVD remote and USB keyboard. In xemu the start screen (background,
-logo, selection bar and main menu) matches the original's pixel for pixel outside the turning
-logo, with the built-in menu and with a `[Menu]`, and every skin variable reads the same as in the
-original (`tools/make_info_test.py` makes a skin that shows them all). What is called but not
-rebuilt yet (the drive identify, ATA and SMART code) is in `include/evox/pending.h` and the stub
-classes in `include/evox/dash.h`: stubs in `src/pending.cpp` log `pending: <name> (<original
-address>)` and return a neutral result. Source comments give each function's address in the
-original, so it can be checked against the disassembly.
+and the flash writer, the DVD remote and USB keyboard, and the drive code (IDENTIFY with the
+settings screen's Security line, SMART and the HDD temperature, the drive's lock password and its
+security commands). In xemu the start screen (background, logo, selection bar and main menu)
+matches the original's pixel for pixel outside the turning logo, with the built-in menu and with a
+`[Menu]`, and every skin variable reads the same as in the original (`tools/make_info_test.py`
+makes a skin that shows them all). Source comments give each function's address in the original,
+so it can be checked against the disassembly.
 
 The rebuild links RXDK's D3D8, D3DX8, XGraphics, XNet, XAPI and C runtime in place of the XDK ones
 that the original carried. The output XBE is not packed.
@@ -113,6 +112,11 @@ images and with its own decoding of the TSR.
 action (a copy, with its log), both from the folder `tools/make_menu_test.py` makes. Never put
 configsector, format, flashbios or hddlock* steps in a test action, and never script the Flash
 BIOS box.
+
+`tests/drive.txt` opens Settings at the Security line; test builds log the IDENTIFY model, the
+Security text, SMART and the drive's lock password at start-up. The `tools/make_info_test.py` skin
+shows the HDD temperature from SMART (its evox.ini sets `EnableSMART`, with `HDD_Temp_ID = 190`:
+xemu's drive has no attribute 194). Never script the hddlock* commands or steps.
 
 `tools/gen_test_script.py` lists the script commands. `EVOX_TEST_INI` loads and saves
 `e:\evox.ini` in place of `q:\evox.ini`, so run it on a throwaway HDD (xemu's `-snapshot`). The

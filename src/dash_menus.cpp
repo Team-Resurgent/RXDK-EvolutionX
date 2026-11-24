@@ -26,7 +26,7 @@
 #include "evox/globals.h"
 #include "evox/inifile.h"
 #include "evox/log.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 char g_MenuLine[0x600];          // 0x3D7A70
 char g_ItemPaths[0x800][0x100];  // 0x3F9C48

@@ -9,7 +9,7 @@
 #include "evox/dash.h"
 #include "evox/log.h"
 #include "evox/md5.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 struct TestStep {
     DWORD frame;

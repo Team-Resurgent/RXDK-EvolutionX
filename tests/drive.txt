@@ -1,0 +1,7 @@
+# The drive code's results: the settings screen's Harddisk rows with the Security line (from
+# IDENTIFY). The drive start-up logs IDENTIFY, SMART and the drive's lock password (test builds).
+# Reads only: never script the hddlock* commands or steps.
+200 action 9                 # Settings (fades in for 32 frames)
++60 down*15                  # row 15: Security
++60 log settings at Security
++600 log done

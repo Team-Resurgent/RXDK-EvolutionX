@@ -7,7 +7,7 @@
 #include <string.h>
 #include "evox/globals.h"
 #include "evox/log.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 #include "evox/socket.h"
 
 // in the SDK's libxapi, not declared in its headers (see main.cpp)

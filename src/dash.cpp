@@ -11,7 +11,7 @@
 #include "evox/log.h"
 #include "evox/devices.h"
 #include "evox/info.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 #pragma clang diagnostic ignored "-Winvalid-offsetof" // (layout checks on purpose)
 static_assert(offsetof(CEvoxDash, m_d3dpp) == 0x004, "m_d3dpp");

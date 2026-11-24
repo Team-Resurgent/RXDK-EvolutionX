@@ -26,6 +26,6 @@ extern WCHAR g_InfoChameleonBank[0x20];  // 0x57D360
 extern WCHAR g_ProgressText[0x200];      // 0x47CDE0 cleared by InfoTick's first run
 extern char g_BiosMd5Text[0x48];         // 0x47C2D0 "0x" and the flash's MD5 in hex
 extern char g_MuDrive[8];                // 0x57F5D8 memory unit drive letters (0: not mounted)
-extern BYTE g_SmartData[0x200];          // 0x590548 SMART attributes (read by SmartEnabled237C0)
+extern BYTE g_SmartData[0x200];          // 0x590548 SMART attributes (SmartReadData)
 extern bool g_SmartOn;                   // 0x58FB00 SMART is enabled on the drive (hdd.cpp)
 extern BYTE g_HddTempId;                 // 0x95CD0 the SMART attribute with the temperature

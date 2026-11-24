@@ -13,7 +13,7 @@
 #include "evox/inifile.h"
 #include "evox/md5.h"
 #include "evox/netcfg.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 #include "evox/skinvars.h"
 
 WCHAR g_InfoNetType[0x40];
@@ -130,7 +130,7 @@ static DWORD WINAPI TemperatureThread(LPVOID)
     TemperatureText(g_VarTemp2, (double)(v >> 5) * 0.125 + cpu);
     int hdd;
     if (g_SmartOn) {
-        SmartEnabled237C0();
+        SmartReadData();
         if ((hdd = SmartTemperature()) != -1) {
             TemperatureText(g_VarTemp3, (double)hdd);
             g_SensorBusy = false;

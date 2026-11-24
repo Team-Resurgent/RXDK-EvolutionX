@@ -1,6 +1,5 @@
-// What is not rebuilt yet. Each one is a stub in src/pending.cpp that logs its name and original
-// address and returns a neutral result; replace them as the real code is rebuilt. The dashboard
-// classes that are still stubs are declared in include/evox/dash.h.
+// Functions shared across files that have no header of their own: start-up, leaving the
+// dashboard, the drive and Backup.
 #pragma once
 #include <xtl.h>
 #include "evox/chameleon.h"
@@ -21,20 +20,19 @@ bool ReadDiskSector(DWORD sector, void *buf); // 0x23060 (hdd.cpp)
 void RelinkDrives();               // 0x23150 drive letters again after a format (hdd.cpp)
 ANSI_STRING *FDriveDevice();       // F:'s device, \Device\Harddisk0\Partition6 (hdd.cpp)
 
-// the drive (InitHardDisk)
-struct AtaRegisters {              // 16 bytes
+// the drive (hdd.cpp)
+struct AtaRegisters {              // 16 bytes, ATA_PASS_THROUGH
     BYTE features, sectorCount, lbaLow, lbaMid, lbaHigh, device, command;
-    BYTE unk07;                    // 1 for the commands without a data-in block (SMART ENABLE, security)
+    BYTE hostSendsData;            // 1: the data block goes to the drive (security), or there is none
     DWORD dataSize;                // +0x08 the data block (0x200), if any
     void *data;                    // +0x0C
 };
 extern BYTE *g_DriveIdentify;      // 0x58FB08 the drive's IDENTIFY data (512 bytes)
 void IdentifyDrive();              // 0x236E0
 bool AtaCommand(AtaRegisters *r);  // 0x23530
-void SmartEnabled237C0();          // 0x237C0
-void Func235F0();                  // 0x235F0 end of InitHardDisk
-// the drive's security commands (hdd.cpp)
-extern BYTE g_HddPassword[0x20];   // 0x590314 the drive's lock password (set by the drive code)
+void SmartReadData();              // 0x237C0 into g_SmartData
+void ComputeHddPassword();         // 0x235F0 into g_HddPassword, at the end of InitHardDisk
+extern BYTE g_HddPassword[0x20];   // 0x590314 the drive's lock password (ComputeHddPassword)
 bool HddPasswordMissing();         // 0x235D0 its first 16 bytes are all zero
 bool AtaSecurityCommand(BYTE command, WORD control, const BYTE *password); // 0x23650
 

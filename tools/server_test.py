@@ -146,6 +146,8 @@ TELNET_LINES = [
     'smbusdump a8 10 b',
     'smbusdump',
     'pcidump',
+    'smart',
+    'hddinfo',
     'nosuchcommand',
     'exit',
 ]

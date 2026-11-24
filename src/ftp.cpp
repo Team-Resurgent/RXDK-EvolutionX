@@ -10,7 +10,7 @@
 #include "evox/globals.h"
 #include "evox/info.h"
 #include "evox/inifile.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 
 #pragma clang diagnostic ignored "-Winvalid-offsetof" // (the layout checks below are on purpose)
 

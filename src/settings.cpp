@@ -9,7 +9,7 @@
 #include "evox/globals.h"
 #include "evox/info.h"
 #include "evox/inifile.h"
-#include "evox/pending.h"
+#include "evox/system.h"
 #include "evox/settings.h"
 #include "evox/skinvars.h"
 

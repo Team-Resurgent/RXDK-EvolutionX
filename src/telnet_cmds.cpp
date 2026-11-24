@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "evox/pending.h"
+#include "evox/system.h"
 #include "evox/telnet.h"
 
 #define ARG(i) g_TelnetArgv[i]
@@ -123,7 +123,7 @@ static bool AtaRead(BYTE features, BYTE lbaMid, BYTE lbaHigh, BYTE command, BYTE
 // 0x15640: smart, the SMART data (SMART READ DATA) dumped, then each attribute's 12 bytes
 void CTelnetServer::Smart()
 {
-    BYTE data[0x200];
+    alignas(16) BYTE data[0x200]; // (raw disk transfers need an aligned buffer)
     char line[0x90];
     if (!AtaRead(0xD0, 0x4F, 0xC2, 0xB0, data))
         return;
@@ -144,7 +144,7 @@ void CTelnetServer::Smart()
 // 0x157E0: hddinfo, the drive's IDENTIFY data in words
 void CTelnetServer::HddInfo()
 {
-    BYTE data[0x200];
+    alignas(16) BYTE data[0x200]; // (raw disk transfers need an aligned buffer)
     char line[0x90];
     if (!AtaRead(0, 0, 0, 0xEC, data))
         return;
